@@ -2,18 +2,14 @@
 #include "Communication.h"
 #include "ElectricalMeasurements.h"
 #include "SpeedSensor.h"
+#include "Pins.h"
+#include "Diagnostics.h"
 
 #include <Wire.h>
 
 //Defining Pins for all Sensors and Devices
 
-int wire_pin = 0;
-int sd_pin = 5;
-int ce_pin = 6;
-int csn_pin = 7;
-int scl_pin = 22;
-int sda_pin = 21;
-int hall_sensor_pin = 0;
+
 
 DeviceAddress engine_temperature_sensor = {0x28, 0x55, 0x9A, 0x5B, 0x41, 0x24, 0x0B, 0xDD};
 DeviceAddress battery_temperature_sensor = {0x28, 0x61, 0x64, 0x35, 0xF9, 0x7F, 0x26, 0x7E};
@@ -22,6 +18,7 @@ TemperatureSensorControl temperatureController(engine_temperature_sensor, batter
 Communication com;
 ElectricalMeasurements electrics;
 SpeedSensor speedSensor(5, 5.0);
+Diagnostics diagnostics(&Serial, com, temperatureController, electrics);
 
 unsigned long lastWriteTime = 0;
 
@@ -44,7 +41,7 @@ void setup() {
 
       if (input.equalsIgnoreCase("Y")) {
         Serial.println("Starting Self-Checkup-Mode...");
-        startSelfCheckup();    
+        diagnostics.startDiagnostics();    
         
       }
 

@@ -26,7 +26,7 @@ class Communication {
   int CE_PIN;
   int CSN_PIN;
   RF24* radio;
-  uint8_t address[6] = "1Node";
+  uint8_t address[6] = {'1','N','o','d','e', 0};
   String dataBuffer;
 
   void convertDataToByteWithMarkers(const TransmissionData& data, uint8_t* buffer);
