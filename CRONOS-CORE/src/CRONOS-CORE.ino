@@ -53,11 +53,11 @@ void setup() {
 
   /*
   com.initRadio(&Serial, ce_pin, csn_pin);
-  com.initSD(sd_pin);
+  com.initSD(SD_PIN);
   com.openSDFile("Test2.txt");
   Wire.begin(sda_pin, scl_pin);
   electrics.init(&Wire, &Serial);
-  temperatureController.init(wire_pin);
+  temperatureController.init(WIRE_PIN);
   speedSensor.init(hall_sensor_pin);
 
   
@@ -111,46 +111,3 @@ void checkupMessage(bool status, String pos_msg, String neg_msg) {
   }
 }
 
-
-void startSelfCheckup() {
-
-  Serial.println(" Self-Checkup-Mode successfully started!");
-  Serial.println();
-
-  Serial.println(">>>Checking Communication - Radio<<<");
-  checkupMessage(com.initRadio(&Serial, ce_pin, csn_pin), "Radio is successfully initialized!", "Radio could not be initialized!");
-  checkupMessage(com.checkRadioConnection(), "Data Transmission over Radio successfull!", "Data Transmission over Radio failed!");
-  checkupMessage(com.checkRadioSignalstrength(), "Good Radio-Signalstrength", "Bad Radio-Signalstrength");
-  
-  Serial.println(">>>Checking Communication - SD-Card<<<");
-  checkupMessage(com.initSD(sd_pin), "SD-Card is successfully initialized!", "Could not initialized SD-Card!");
-  checkupMessage(com.openSDFile("Checkup.txt"), "Successfully opened file on SD-Card!", "Could not open file on SD-Card");
-  checkupMessage(com.checkWritingToSD(), "Writing to SD-Card was successfull!", "Could not write to SD-Card!");
-  com.closeSDFile();
-  com.removeSDFile("Checkup.txt");
-
-  Serial.print(">>>Checking Temperature Sensors<<<");
-  SensorStatus s = temperatureController.checkSensorStatus();
-  checkupMessage(s.engineFound, "Engine sensor found!", "Enige sensor not found!");
-  checkupMessage(s.batteryFound, "Battery sensor found!", "Battery sensor not found!");
-  float* value = temperatureController.getTemperatureOfSensors();
-  checkupMessage(!isnan(value[0]), "Receiced valid values from engine sensor!", "Received invalid values from engine sensor!");
-  checkupMessage(!isnan(value[1]), "Receiced valid values from battery sensor!", "Received invalid values from battery sensor!");
-  checkupMessage(!isnan(temperatureController.getChipTemperature()), "Receiced valid values from chip sensor!", "Received invalid values from chip sensor!");
-  
-  Serial.println(">>>Checking Electrical Measurements<<<");
-  Wire.begin();
-  checkupMessage(electrics.init(&Wire, &Serial), "INA219 successfully initialized!" , "INA219 could not be initialized!");
-  checkupMessage(!isnan(electrics.getCurrent()), "Received valid values for Current!", "Received invalid values for current!");
-  checkupMessage(!isnan(electrics.getVoltage()), "Received valid values for voltage!", "Received invalid values for current!");
-
-  
-  //To be continued!
-
-  
-
-
-
-  
-  return;
-}

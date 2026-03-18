@@ -1,10 +1,10 @@
 #include "Communication.h"
 
-bool Communication::initRadio(HardwareSerial* serial, int ce_pin, int csn_pin) {
+bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin) {
   m_serial = serial;
 
-  CE_PIN = ce_pin;
-  CSN_PIN = csn_pin;
+  ce_pin = _ce_pin;
+  csn_pin = _csn_pin;
 
   radio = new RF24(ce_pin, csn_pin);
 
@@ -62,27 +62,39 @@ bool Communication::openSDFile(String file_name) {
 
 void Communication::saveDataForSDBuffered(TransmissionData data) {
   char buffer[256];
-  char buf_drive[10], buf_acc[10], buf_volt[10], buf_curr[10];
+  char buf_drive[10], buf_acc_x[10], buf_acc_y[10], buf_euler[10], buf_gyro_z[10], buf_volt[10], buf_curr[10];
 
 
   //Arduino libaries do not support floats with the snprintf, so a work-around is needed
   //with dtostrf a double (float) is converted to an array of chars (string)
   //dtostrf(input, with, decimal place, output) -> width -> total String length (can be longer, will be filled automatically with spaces)
-  dtostrf(data.drive, 6, 2, buf_drive);
-  dtostrf(data.acceleration, 4, 2, buf_acc);
-  dtostrf(data.voltage, 6, 2, buf_volt);
-  dtostrf(data.current, 6, 2, buf_curr);
+    dtostrf(data.drive, 6, 2, buf_drive);
+    dtostrf(data.lin_accel_x, 4, 2, buf_acc_x);
+    dtostrf(data.lin_accel_y, 4, 2, buf_acc_y);
+    dtostrf(data.euler, 5, 2, buf_euler);
+    dtostrf(data.gyro_z, 5, 2, buf_gyro_z);
+    dtostrf(data.voltage, 6, 2, buf_volt);
+    dtostrf(data.current, 6, 2, buf_curr);
 
-  snprintf(buffer, sizeof(buffer), "<%u;%u;%s;%u;%u;%u;%s;%s;%s>",
-           data.identifier,
-           data.status,
-           buf_drive,
-           data.temperature_engine,
-           data.temperature_battery,
-           data.temperature_chip,
-           buf_acc,
-           buf_volt,
-           buf_curr);
+  uint16_t timestamp = (uint16_t)(millis() & 0xFFFF);
+
+    snprintf(buffer, sizeof(buffer),
+             "<%u;%u;%u;%u;%u;%s;%s;%s;%s;%s;%s;%s;%u;%u>",
+             timestamp,                  // Zeitstempel
+             data.status,
+             data.temperature_engine,
+             data.temperature_battery,
+             data.temperature_chip,
+             buf_drive,
+             buf_acc_x,
+             buf_acc_y,
+             buf_euler,
+             buf_gyro_z,
+             buf_volt,
+             buf_curr,
+             data.temperature_4,
+             data.temperature_5
+    );
 
   dataBuffer += String(buffer);
 
@@ -122,47 +134,121 @@ void Communication::closeSDFile() {
   
 }
 
+size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t* buffer, TransmissionData* data) {
+    int pos = 1; //0 is later used für markers
+    buffer[pos++] = identifier;
+    buffer[pos++] = packet_number_counter; 
+    packet_number_counter++;
+    // Timestamp (2 Bytes)
+    uint16_t ts = (uint16_t)(millis() & 0xFFFF);
+    buffer[pos++] = ts & 0xFF;
+    buffer[pos++] = (ts >> 8) & 0xFF;
+
+    switch(identifier) {
+      case 0:
+        buffer[pos++] = data->status;
+        buffer[pos++] = data->temperature_battery;
+        buffer[pos++] = data->temperature_chip;
+        buffer[pos++] = data->temperature_engine;
+        buffer[pos++] = data->temperature_4;
+        buffer[pos++] = data->temperature_5;
+        memcpy(&buffer[pos], &data->current, sizeof(data->current));
+        pos += sizeof(data->current);
+        memcpy(&buffer[pos], &data->voltage, sizeof(data->voltage));
+        pos += sizeof(data->voltage);
+        memcpy(&buffer[pos], &data->drive, sizeof(data->drive));
+        pos += sizeof(data->drive);
+        break; 
+      case 2: 
+        memcpy(&buffer[pos], &data->lin_accel_x, sizeof(data->lin_accel_x));
+        pos += sizeof(data->lin_accel_x);
+        memcpy(&buffer[pos], &data->lin_accel_y, sizeof(data->lin_accel_y));
+        pos += sizeof(data->lin_accel_y);
+        memcpy(&buffer[pos], &data->gyro_z, sizeof(data->gyro_z));
+        pos += sizeof(data->gyro_z);
+        memcpy(&buffer[pos], &data->euler, sizeof(data->euler));
+        pos += sizeof(data->euler);
+        break;
+    }
+    return pos;
+
+}; 
+
+
+
 void Communication::sendData(TransmissionData data) {
-  uint8_t buffer[sizeof(TransmissionData) + 2];
+  
 
-  convertDataToByteWithMarkers(data, buffer);
+  uint8_t buffer[64]; 
+  size_t packet_size;
 
-  if (!radio->write(&buffer, sizeof(buffer))) {
+  //Datapacket 1
+  packet_size = extractDatapacketAsBytestring(0, buffer, &data);
+  addMakersToData(data, buffer, packet_size);
+  if (!radio->write(buffer, sizeof(packet_size))) {
     m_serial->println("[ERROR] Could not send data over radio!");
   }
 
-  //just for Debugging
-  for (size_t i = 0; i < sizeof(buffer); i++) {
-    if (i == 1 || i == 7 || i == 8 || i == 9 || i == 2) {
-      m_serial->print((uint8_t)buffer[i]);
-    }
-    if (i == 0 || i == sizeof(buffer) - 1) {
-      m_serial->print((char)buffer[i]);
-    } else {
-      m_serial->print(";");
-    }
+  //Datapacket 2
+  packet_size = extractDatapacketAsBytestring(2, buffer, &data);
+  addMakersToData(data, buffer, packet_size);
+
+  if (!radio->write(buffer, sizeof(packet_size))) {
+    m_serial->println("[ERROR] Could not send data over radio!");
   }
-  m_serial->println();
-
-  TransmissionData dataRecovered;
-
-  convertBytesToStruct(dataRecovered, buffer, sizeof(buffer));
-
-  m_serial->println(dataRecovered.current);
 }
 
 
-void Communication::convertDataToByteWithMarkers(const TransmissionData& data, uint8_t* buffer) {
+void Communication::addMakersToData(const TransmissionData& data, uint8_t* buffer, size_t packet_size) {
   buffer[0] = '<';
-  memcpy(buffer + 1, &data, sizeof(TransmissionData));
-  buffer[sizeof(TransmissionData) + 1] = '>';
+  buffer[packet_size] = '>';
+  packet_size++;
 }
 
 void Communication::convertBytesToStruct(TransmissionData& data, const uint8_t* buffer, size_t length) {
-  //for security to prevent errors
-  if (length < sizeof(TransmissionData) + 2) return;
+  int pos = 2; // buffer[0]='<' , buffer[1]=identifier
 
-  memcpy(&data, buffer + 1, sizeof(TransmissionData));
+  uint8_t identifier = buffer[1];
+
+  data.packet_number = buffer[pos++];
+
+  data.timestamp = buffer[pos++];
+  data.timestamp |= (uint16_t)buffer[pos++] << 8;
+
+  switch(identifier) {
+
+      case 0:
+          data.status = buffer[pos++];
+          data.temperature_battery = buffer[pos++];
+          data.temperature_chip = buffer[pos++];
+          data.temperature_engine = buffer[pos++];
+          data.temperature_4 = buffer[pos++];
+          data.temperature_5 = buffer[pos++];
+
+          memcpy(&data.current, &buffer[pos], sizeof(data.current));
+          pos += sizeof(data.current);
+
+          memcpy(&data.voltage, &buffer[pos], sizeof(data.voltage));
+          pos += sizeof(data.voltage);
+
+          memcpy(&data.drive, &buffer[pos], sizeof(data.drive));
+          pos += sizeof(data.drive);
+          break;
+
+      case 2:
+          memcpy(&data.lin_accel_x, &buffer[pos], sizeof(data.lin_accel_x));
+          pos += sizeof(data.lin_accel_x);
+
+          memcpy(&data.lin_accel_y, &buffer[pos], sizeof(data.lin_accel_y));
+          pos += sizeof(data.lin_accel_y);
+
+          memcpy(&data.gyro_z, &buffer[pos], sizeof(data.gyro_z));
+          pos += sizeof(data.gyro_z);
+
+          memcpy(&data.euler, &buffer[pos], sizeof(data.euler));
+          pos += sizeof(data.euler);
+          break;
+  }
 }
 
 bool Communication::checkDataIntegrity(uint8_t* buffer, size_t length) {
