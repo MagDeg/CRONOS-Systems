@@ -1,21 +1,17 @@
 #include "SpeedSensor.h"
 
-SpeedSensor::SpeedSensor(const int BUFFER_SIZE, const float SLOPE_THRESHOLD) {
+SpeedSensor::SpeedSensor(const int BUFFER_SIZE) {
   _BUFFER_SIZE = BUFFER_SIZE;
-  _SLOPE_THRESHOLD = SLOPE_THRESHOLD;
   buffer = new float[_BUFFER_SIZE]();
 }
-
 
 void SpeedSensor::init(HardwareSerial* serial, int sensor_pin) {
   _sensor_pin = sensor_pin;
   _serial = serial;
 
-  pinMode(_sensor_pin, INPUT);
+  pinMode(_sensor_pin, INPUT_PULLUP); // wichtig für A3144!
 
-  rawValue = analogRead(_sensor_pin);
-  filteredValue = rawValue;
-  lastFilteredValue = filteredValue;
+  lastState = digitalRead(_sensor_pin);
 }
 
 void SpeedSensor::addValueToBuffer(float value) {
@@ -27,25 +23,20 @@ void SpeedSensor::addValueToBuffer(float value) {
 float SpeedSensor::getBufferAverage() {
   float sum = 0;
   for (int i = 0; i < bufferCount; i++) sum += buffer[i];
-  return (bufferCount != 0) ? sum/bufferCount : 0; 
+  return (bufferCount != 0) ? sum / bufferCount : 0;
 }
 
 float SpeedSensor::getDriveRPM() {
   checkSensorTrigger();
-
-  float drive = getBufferAverage();
-
-  return drive;
+  return getBufferAverage();
 }
 
 void SpeedSensor::checkSensorTrigger() {
-  rawValue = analogRead(_sensor_pin);
+  bool currentState = digitalRead(_sensor_pin);
 
-  filteredValue = alpha * rawValue + (1 - alpha) * filteredValue;
+  // Flanke erkennen (HIGH → LOW = Magnet erkannt)
+  if (lastState == HIGH && currentState == LOW) {
 
-  float delta = filteredValue - lastFilteredValue;
-
-  if ((delta > _SLOPE_THRESHOLD) && !triggered) {
     if (timeLastTrigger != 0) {
       timeSinceLastTrigger = micros() - timeLastTrigger;
 
@@ -54,16 +45,9 @@ void SpeedSensor::checkSensorTrigger() {
         addValueToBuffer(rpm);
       }
     }
+
     timeLastTrigger = micros();
-    triggered = true;
   }
 
-  if (delta < (_SLOPE_THRESHOLD/2)) {
-    triggered = false;
-  }
-
-  lastFilteredValue = filteredValue; 
-
-  
+  lastState = currentState;
 }
-
