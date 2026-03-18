@@ -1,15 +1,17 @@
+
+
 #include "Diagnostics.h"
 
 void Diagnostics::startDiagnostics(){
     Serial.print(" Self-Checkup-Mode successfully started!\n\n");
 
     Serial.println(">>>Checking Communication - Radio<<<");
-    sendDiagnosticsMessage(com.initRadio(serial, ce_pin, csn_pin), "Radio is successfully initialized!", "Radio could not be initialized!");
+    sendDiagnosticsMessage(com.initRadio(serial, CE_PIN, CSN_PIN), "Radio is successfully initialized!", "Radio could not be initialized!");
     sendDiagnosticsMessage(com.checkRadioConnection(), "Data Transmission over Radio successfull!", "Data Transmission over Radio failed!");
     sendDiagnosticsMessage(com.checkRadioSignalstrength(), "Good Radio-Signalstrength", "Bad Radio-Signalstrength");
   
     Serial.println(">>>Checking Communication - SD-Card<<<");
-    sendDiagnosticsMessage(com.initSD(sd_pin), "SD-Card is successfully initialized!", "Could not initialized SD-Card!");
+    sendDiagnosticsMessage(com.initSD(SD_PIN), "SD-Card is successfully initialized!", "Could not initialized SD-Card!");
     sendDiagnosticsMessage(com.openSDFile("Checkup.txt"), "Successfully opened file on SD-Card!", "Could not open file on SD-Card");
     sendDiagnosticsMessage(com.checkWritingToSD(), "Writing to SD-Card was successfull!", "Could not write to SD-Card!");
     com.closeSDFile();

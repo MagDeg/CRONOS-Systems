@@ -1,7 +1,9 @@
-int wire_pin = 0;
-int sd_pin = 5;
-int ce_pin = 6;
-int csn_pin = 7;
-int scl_pin = 22;
-int sda_pin = 21;
-int hall_sensor_pin = 0;
+#pragma once
+
+#define WIRE_PIN 0
+#define SD_PIN 5
+#define CE_PIN 6
+#define CSN_PIN 7
+#define SCL_PIN 22
+#define SDA_PIN 21
+#define HALL_SENSOR_PIN 0
