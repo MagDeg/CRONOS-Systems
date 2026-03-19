@@ -17,7 +17,7 @@ DeviceAddress battery_temperature_sensor = {0x28, 0x61, 0x64, 0x35, 0xF9, 0x7F, 
 TemperatureSensorControl temperatureController(engine_temperature_sensor, battery_temperature_sensor); 
 Communication com;
 ElectricalMeasurements electrics;
-SpeedSensor speedSensor();
+SpeedSensor speedSensor;
 Diagnostics diagnostics(&Serial, com, temperatureController, electrics);
 
 unsigned long lastWriteTime = 0;

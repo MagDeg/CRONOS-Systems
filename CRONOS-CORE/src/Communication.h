@@ -41,7 +41,8 @@ class Communication {
   int ce_pin;
   int csn_pin;
   RF24* radio;
-  uint8_t address[6] = {'1','N','o','d','e', 0};
+  uint8_t unit_address[6] = {'T','X','1','2','3',0};
+  uint8_t link_address[6] = {'R','X','1','2','3',0};
   String dataBuffer;
   uint8_t packet_number_counter = 0; 
 
@@ -52,7 +53,9 @@ class Communication {
 
 
   public:
-  bool initRadio(HardwareSerial* serial, int ce_pin, int csn_pin);
+  bool initRadio(HardwareSerial* serial, int ce_pin, int csn_pin, int module);
+  void startAsReceiver();
+  void startAsSender();
   bool initSD(int sd_pin);
   bool checkRadioConnection();
   bool checkRadioSignalstrength();
@@ -60,6 +63,7 @@ class Communication {
   void removeSDFile(String file);
   void saveDataForSDBuffered(TransmissionData data);
   void sendData(TransmissionData data);
+  bool receiveData(TransmissionData &data);
   bool openSDFile(String file_name);
   void writeBufferToSD();
   void closeSDFile();

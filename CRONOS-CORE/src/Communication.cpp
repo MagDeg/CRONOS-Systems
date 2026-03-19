@@ -1,6 +1,6 @@
 #include "Communication.h"
 
-bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin) {
+bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin, int module) {
   m_serial = serial;
 
   ce_pin = _ce_pin;
@@ -16,15 +16,23 @@ bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin)
   radio->setPALevel(RF24_PA_HIGH);  // starke, aber sichere Sendeleistung
   radio->setDataRate(RF24_1MBPS);   // stabiler als 2 Mbps
   radio->setChannel(90);            // außerhalb üblicher WLAN-Kanäle
-  radio->setAutoAck(true);          // Bestätigungen an
+  radio->setAutoAck(false);         
   radio->enableDynamicPayloads();   // nur nötige Bytes senden
   radio->setRetries(3, 15);         // 3 Versuche, max. Wartezeit
 
-  radio->openWritingPipe(address);
-  radio->stopListening();
+  if (module == 1) {
+    radio->openWritingPipe(link_address);
+    radio->openReadingPipe(1, unit_address);
+    radio->startListening();
+  } else {
+    radio->openWritingPipe(unit_address);
+    radio->openReadingPipe(1, link_address);
+    radio->startListening();
+  }
 
   return true;
 }
+
 
 bool Communication::initSD(int sd_pin) {
     bool status = SD.begin(sd_pin);
@@ -178,6 +186,7 @@ size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t*
 
 void Communication::sendData(TransmissionData data) {
   
+  radio->stopListening();
 
   uint8_t buffer[64]; 
   size_t packet_size;
@@ -185,24 +194,77 @@ void Communication::sendData(TransmissionData data) {
   //Datapacket 1
   packet_size = extractDatapacketAsBytestring(0, buffer, &data);
   addMakersToData(data, buffer, packet_size);
-  if (!radio->write(buffer, sizeof(packet_size))) {
+  if (!radio->write(buffer, packet_size +1)) {
     m_serial->println("[ERROR] Could not send data over radio!");
   }
-
+  delay(5);
   //Datapacket 2
   packet_size = extractDatapacketAsBytestring(2, buffer, &data);
   addMakersToData(data, buffer, packet_size);
 
-  if (!radio->write(buffer, sizeof(packet_size))) {
+  if (!radio->write(buffer, packet_size +1)) {
     m_serial->println("[ERROR] Could not send data over radio!");
   }
+  delay(5);
+}
+
+bool Communication::receiveData(TransmissionData &data) {
+    radio->startListening();
+
+    if (radio->available()) {
+        uint8_t buffer[64];   // Maximalgröße
+
+        // Erstes Byte für Startmarker, zweites für Identifier
+        radio->read(buffer, sizeof(buffer)); 
+
+        // Identifier auslesen
+        uint8_t identifier = buffer[1];
+
+        // Paketgröße anhand Identifier bestimmen (inklusive Start- und Endmarker)
+        size_t expected_size = 0;
+        switch(identifier) {
+            case 0:
+                expected_size = 1  /*<*/ + 1 /*identifier*/ + 1 /*packet_number*/
+                                + 2 /*timestamp*/ + 6 /*uint8_t Felder*/
+                                + sizeof(float)*3 /*current, voltage, drive*/
+                                + 2 /*temperature_4 & 5*/ 
+                                + 1 /*>*/; // Endmarker
+                break;
+            case 2:
+                expected_size = 1  /*<*/ + 1 /*identifier*/ + 1 /*packet_number*/
+                                + 2 /*timestamp*/ + sizeof(float)*4 /*lin_acc_x, lin_acc_y, gyro_z, euler*/
+                                + 1 /*>*/;
+                break;
+            default:
+                m_serial->println("[ERROR] Unknown identifier!");
+                return false;
+        }
+
+        // Prüfen, ob Länge passt
+        if (expected_size > sizeof(buffer)) {
+            m_serial->println("[ERROR] Packet too large!");
+            return false;
+        }
+
+        // Start- und Endmarker prüfen
+        if(!checkDataIntegrity(buffer, expected_size)) {
+            m_serial->println("[ERROR] Invalid start or end marker!");
+            return false;
+        }
+
+        // Bytes ins Struct konvertieren
+        convertBytesToStruct(data, buffer, expected_size);
+
+        return true;
+    }
+
+    return false; // keine Daten verfügbar
 }
 
 
 void Communication::addMakersToData(const TransmissionData& data, uint8_t* buffer, size_t packet_size) {
   buffer[0] = '<';
   buffer[packet_size] = '>';
-  packet_size++;
 }
 
 void Communication::convertBytesToStruct(TransmissionData& data, const uint8_t* buffer, size_t length) {
