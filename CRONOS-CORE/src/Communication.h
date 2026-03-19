@@ -4,6 +4,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include "RF24.h"
+#include "Diagnostics.h"
 
 struct EulerYaw {
   float yaw;
@@ -46,6 +47,8 @@ class Communication {
   String dataBuffer;
   uint8_t packet_number_counter = 0; 
 
+  Diagnostics* diagnostics;
+
   void addMakersToData(const TransmissionData& data, uint8_t* buffer, size_t packet_size);
   void convertBytesToStruct(TransmissionData& data, const uint8_t* buffer, size_t length);
   bool checkDataIntegrity(uint8_t* buffer, size_t length);
@@ -53,7 +56,7 @@ class Communication {
 
 
   public:
-  bool initRadio(HardwareSerial* serial, int ce_pin, int csn_pin, int module);
+  bool initRadio(HardwareSerial* serial, int ce_pin, int csn_pin, int module, Diagnostics* _diagnostics);
   void startAsReceiver();
   void startAsSender();
   bool initSD(int sd_pin);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include "Diagnostics.h"
 
 class SpeedSensor {
 protected:
@@ -18,12 +19,14 @@ protected:
   int bufferIndex = 0;
   int bufferCount = 0;
 
+  Diagnostics* diagnostics;
+
   void addValueToBuffer(float value);
   float getBufferAverage();
   void checkSensorTrigger();
 
 public:
   SpeedSensor(const int BUFFER_SIZE);
-  void init(HardwareSerial* serial, int sensor_pin); 
+  void init(HardwareSerial* serial, int sensor_pin, Diagnostics* _diagnostics); 
   float getDriveRPM();
 };

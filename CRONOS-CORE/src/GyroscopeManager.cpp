@@ -1,5 +1,6 @@
 #include "GyroscopeManager.h"
 
+
 void GyroscopeManager::setReports() {
     bno.enableReport(SH2_ACCELEROMETER);
     bno.enableReport(SH2_GYROSCOPE_CALIBRATED);
@@ -22,8 +23,9 @@ void GyroscopeManager::updateEulerAndQuat() {
     eulerCache.yaw   = atan2(2*(r*k + i*j), 1 - 2*(j*j + k*k)) * 180.0 / PI;
 }
 
-bool GyroscopeManager::init() {
+bool GyroscopeManager::init(Diagnostics* _diagnostics) {
     Wire.begin();
+    diagnostics = _diagnostics;
     connected = bno.begin_I2C();
     if (!connected) return false;
 

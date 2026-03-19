@@ -2,6 +2,7 @@
 #include <Adafruit_BNO08x.h>
 #include <Wire.h>
 #include <math.h>
+#include "Diagnostics.h"
 
 struct AxisValues {
     float x; 
@@ -41,10 +42,12 @@ class GyroscopeManager {
         bool connected = false;
         void setReports();
         void updateEulerAndQuat();
+
+        Diagnostics* diagnostics;
         
     public:
 
-        bool init();
+        bool init(Diagnostics* _diagnostics);
         void update();
         bool isSensorConnected() {return connected;};
 

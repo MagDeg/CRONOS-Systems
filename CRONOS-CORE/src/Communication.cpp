@@ -1,7 +1,8 @@
 #include "Communication.h"
 
-bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin, int module) {
+bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin, int module, Diagnostics* _diagnostics) {
   m_serial = serial;
+  diagnostics = _diagnostics;
 
   ce_pin = _ce_pin;
   csn_pin = _csn_pin;

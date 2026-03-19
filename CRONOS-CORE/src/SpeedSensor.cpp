@@ -5,9 +5,10 @@ SpeedSensor::SpeedSensor(const int BUFFER_SIZE) {
   buffer = new float[_BUFFER_SIZE]();
 }
 
-void SpeedSensor::init(HardwareSerial* serial, int sensor_pin) {
+void SpeedSensor::init(HardwareSerial* serial, int sensor_pin, Diagnostics* _diagnostics) {
   _sensor_pin = sensor_pin;
   _serial = serial;
+  diagnostics = _diagnostics;
 
   pinMode(_sensor_pin, INPUT_PULLUP); // wichtig für A3144!
 

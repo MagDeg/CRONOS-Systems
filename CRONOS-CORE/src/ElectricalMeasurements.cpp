@@ -1,8 +1,10 @@
 #include "ElectricalMeasurements.h"
 
-bool ElectricalMeasurements::init(TwoWire* wire, HardwareSerial* serial) {
+
+bool ElectricalMeasurements::init(TwoWire* wire, HardwareSerial* serial, Diagnostics* _diagnostics) {
   i2c = wire;
   m_serial = serial;
+  diagnostics = _diagnostics;
   if(!ina219.begin()) {
     m_serial->println("[ERROR] Could not initialize INA219!");
     return false;
