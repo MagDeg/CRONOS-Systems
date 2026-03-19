@@ -8,6 +8,10 @@
 #include "SystemStateQueue.h"
 #include <Wire.h>
 
+class Communication;
+class TemperatureSensorControl; 
+class ElectricalMeasurements;
+
 
 class Diagnostics {
     protected:

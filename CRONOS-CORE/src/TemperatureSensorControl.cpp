@@ -5,12 +5,16 @@ TemperatureSensorControl::TemperatureSensorControl(const DeviceAddress& sensor_e
   memcpy(_sensor_battery, sensor_battery, sizeof(DeviceAddress));
 }
 
-void TemperatureSensorControl::init(int wire_pin, Diagnostics* _diagnostics) {
+void TemperatureSensorControl::init(int wire_pin) {
   oneWire = new OneWire(wire_pin);
   sensors = new DallasTemperature(oneWire);
-  diagnostics = _diagnostics;
   sensors->begin();
 }
+
+void TemperatureSensorControl::linkDiagnostics(Diagnostics* _diagnostics) {
+  diagnostics = _diagnostics;
+}
+
 
 float* TemperatureSensorControl::getTemperatureOfSensors() {
 

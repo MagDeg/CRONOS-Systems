@@ -6,6 +6,8 @@
 #include "RF24.h"
 #include "Diagnostics.h"
 
+class Diagnostics; 
+
 struct EulerYaw {
   float yaw;
 };

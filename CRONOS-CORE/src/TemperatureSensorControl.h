@@ -1,9 +1,11 @@
 #pragma once
 
-#include <OneWire.h>
+#include <Arduino.h>
+#include <Wire.h>
 #include <DallasTemperature.h>
-#include "Arduino.h"
-#include "Diagnostics.h"
+
+
+class Diagnostics;
 
 struct SensorStatus {
   bool engineFound;
@@ -21,7 +23,8 @@ class TemperatureSensorControl {
 
   public:
     TemperatureSensorControl(const DeviceAddress& sensor_motor,  const DeviceAddress& sensor_battery);
-    void init(int wire_pin, Diagnostics* _diagnostics);
+    void init(int wire_pin);
+    void linkDiagnostics(Diagnostics* _diagnostics);
     float* getTemperatureOfSensors();
     float getChipTemperature();
     SensorStatus checkSensorStatus(); 
