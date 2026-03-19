@@ -6,7 +6,7 @@ void Diagnostics::startDiagnostics(){
     Serial.print(" Self-Checkup-Mode successfully started!\n\n");
 
     Serial.println(">>>Checking Communication - Radio<<<");
-    sendDiagnosticsMessage(com.initRadio(serial, CE_PIN, CSN_PIN), "Radio is successfully initialized!", "Radio could not be initialized!");
+    sendDiagnosticsMessage(com.initRadio(serial, CE_PIN, CSN_PIN, MODE), "Radio is successfully initialized!", "Radio could not be initialized!");
     sendDiagnosticsMessage(com.checkRadioConnection(), "Data Transmission over Radio successfull!", "Data Transmission over Radio failed!");
     sendDiagnosticsMessage(com.checkRadioSignalstrength(), "Good Radio-Signalstrength", "Bad Radio-Signalstrength");
   
