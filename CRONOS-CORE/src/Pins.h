@@ -7,3 +7,4 @@
 #define SCL_PIN 22
 #define SDA_PIN 21
 #define HALL_SENSOR_PIN 0
+#define MODE 1

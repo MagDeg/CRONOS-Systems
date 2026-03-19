@@ -19,7 +19,7 @@ QueueHandle_t sensorQueue;
 TemperatureSensorControl temperatureController(engine_temperature_sensor, battery_temperature_sensor); 
 Communication com;
 ElectricalMeasurements electrics;
-SpeedSensor speedSensor;
+SpeedSensor speedSensor();
 Diagnostics diagnostics(&Serial, com, temperatureController, electrics);
 
 unsigned long lastWriteTime = 0;
