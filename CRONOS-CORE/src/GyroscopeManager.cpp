@@ -27,7 +27,10 @@ bool GyroscopeManager::init(Diagnostics* _diagnostics) {
     Wire.begin();
     diagnostics = _diagnostics;
     connected = bno.begin_I2C();
-    if (!connected) return false;
+    if (!connected) {
+        diagnostics->addSystemStateToQueue(BNO_INIT_FAILED);
+        return false;
+    }
 
     setReports();
     return true;

@@ -11,6 +11,7 @@ bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin,
 
   if (!radio->begin()) {
     Serial.println(F("[ERROR] Could not initialize Radiotransmitter!"));
+    diagnostics->addSystemStateToQueue(RADIO_INIT_FAILED);
     return false;
   }
 
@@ -39,8 +40,9 @@ bool Communication::initSD(int sd_pin) {
     bool status = SD.begin(sd_pin);
 
     if (!status) {
-    m_serial->println("[ERROR] Failed to initialize SD-Card!");
-  }
+      m_serial->println("[ERROR] Failed to initialize SD-Card!");
+      diagnostics->addSystemStateToQueue(SD_INIT_FAILED);
+    }
 
   return status;
 
@@ -52,6 +54,7 @@ bool Communication::checkRadioConnection() {
   if (radio->write(data, sizeof(data))) {
     return true;
   } else {
+    diagnostics->addSystemStateToQueue(NO_RADIO_CONNECTION);
     return false;
   }
 }
@@ -65,6 +68,7 @@ bool Communication::openSDFile(String file_name) {
   file = SD.open(file_name, FILE_WRITE);
   if (!file) {
     m_serial->println("[ERROR] There was an error while reading file!");
+    diagnostics->addSystemStateToQueue(SD_FILE_OPEN_FAILED);
   }
   return file;
 }
@@ -115,11 +119,14 @@ void Communication::writeBufferToSD() {
 
   if (!file) {
     m_serial->println("[ERROR] File on SD not Open!");
+    diagnostics->addSystemStateToQueue(SD_FILE_NOT_OPEN);
     return;
   }
 
   if (file.print(dataBuffer) == 0) {
     m_serial->println("[ERROR] Could not write to SD!");
+    diagnostics->addSystemStateToQueue(SD_WRITE_FAILED);
+
   }
   
   file.flush();
@@ -130,6 +137,7 @@ bool Communication::checkWritingToSD() {
   if (file.print("checkup")){
     return true;
   } else {
+    diagnostics->addSystemStateToQueue(SD_WRITE_FAILED);
     return false;
   }
 }
@@ -197,6 +205,7 @@ void Communication::sendData(TransmissionData data) {
   addMakersToData(data, buffer, packet_size);
   if (!radio->write(buffer, packet_size +1)) {
     m_serial->println("[ERROR] Could not send data over radio!");
+    diagnostics->addSystemStateToQueue(DATA_TRANSMISSION_FAILED);
   }
   delay(5);
   //Datapacket 2
@@ -205,6 +214,7 @@ void Communication::sendData(TransmissionData data) {
 
   if (!radio->write(buffer, packet_size +1)) {
     m_serial->println("[ERROR] Could not send data over radio!");
+    diagnostics->addSystemStateToQueue(DATA_TRANSMISSION_FAILED);
   }
   delay(5);
 }

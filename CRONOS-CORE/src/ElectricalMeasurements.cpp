@@ -7,6 +7,7 @@ bool ElectricalMeasurements::init(TwoWire* wire, HardwareSerial* serial, Diagnos
   diagnostics = _diagnostics;
   if(!ina219.begin()) {
     m_serial->println("[ERROR] Could not initialize INA219!");
+    diagnostics->addSystemStateToQueue(INA219_INIT_FAILED);
     return false;
   }
   return true;

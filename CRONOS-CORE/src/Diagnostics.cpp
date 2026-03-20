@@ -52,6 +52,6 @@ uint8_t Diagnostics::getSystemStateFromQueue(){
   return state; 
 }
 
-void Diagnostics::addSystemStateToQueue(uint8_t state) {
+void Diagnostics::addSystemStateToQueue(SystemState state) {
   system_state_queue.push(state); 
 }
