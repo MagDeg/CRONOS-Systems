@@ -24,7 +24,7 @@ void GyroscopeManager::updateEulerAndQuat() {
 }
 
 bool GyroscopeManager::init(Diagnostics* _diagnostics) {
-    Wire.begin();
+    Wire.begin(SDA_PIN, SCL_PIN);
     diagnostics = _diagnostics;
     connected = bno.begin_I2C();
     if (!connected) {

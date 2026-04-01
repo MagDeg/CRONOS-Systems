@@ -15,10 +15,11 @@ bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin,
     return false;
   }
 
+
   radio->setPALevel(RF24_PA_HIGH);  // starke, aber sichere Sendeleistung
   radio->setDataRate(RF24_1MBPS);   // stabiler als 2 Mbps
   radio->setChannel(90);            // außerhalb üblicher WLAN-Kanäle
-  radio->setAutoAck(false);         
+  radio->setAutoAck(true);         
   radio->enableDynamicPayloads();   // nur nötige Bytes senden
   radio->setRetries(3, 15);         // 3 Versuche, max. Wartezeit
 
@@ -49,15 +50,16 @@ bool Communication::initSD(int sd_pin) {
 }
 
 bool Communication::checkRadioConnection() {
-  const char data[] = "Ping";
-
-  if (radio->write(data, sizeof(data))) {
-    return true;
-  } else {
-    diagnostics->addSystemStateToQueue(NO_RADIO_CONNECTION);
-    return false;
-  }
-}
+   const char data[] = "Ping"; 
+   radio->stopListening(); 
+   delay(5); 
+   if (radio->write(data, sizeof(data))) { 
+      return true; 
+    } else { 
+      diagnostics->addSystemStateToQueue(NO_RADIO_CONNECTION);
+      return false; 
+      }
+ }
 
 bool Communication::checkRadioSignalstrength() {
   return radio->testRPD();
@@ -65,10 +67,11 @@ bool Communication::checkRadioSignalstrength() {
 
 
 bool Communication::openSDFile(String file_name) {
-  file = SD.open(file_name, FILE_WRITE);
+  file = SD.open(file_name.c_str(), FILE_WRITE);
   if (!file) {
     m_serial->println("[ERROR] There was an error while reading file!");
     diagnostics->addSystemStateToQueue(SD_FILE_OPEN_FAILED);
+    return false;
   }
   return file;
 }
@@ -143,7 +146,7 @@ bool Communication::checkWritingToSD() {
 }
 
 void Communication::removeSDFile(String file) {
-  SD.remove(file);
+  SD.remove(file.c_str());
 }
 
 void Communication::closeSDFile() {

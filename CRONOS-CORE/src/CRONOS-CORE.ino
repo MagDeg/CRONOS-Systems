@@ -4,6 +4,7 @@
 #include "SpeedSensor.h"
 #include "Pins.h"
 #include "Diagnostics.h"
+#include "GyroscopeManager.h"
 
 #include <Wire.h>
 #include <queue>
@@ -19,8 +20,9 @@ QueueHandle_t sensorQueue;
 TemperatureSensorControl temperatureController(engine_temperature_sensor, battery_temperature_sensor); 
 Communication com;
 ElectricalMeasurements electrics;
-SpeedSensor speedSensor();
-Diagnostics diagnostics(&Serial, com, temperatureController, electrics);
+SpeedSensor speedSensor(NULL);
+GyroscopeManager gyro_manager;
+Diagnostics diagnostics(&Serial, com, temperatureController, electrics, gyro_manager, speedSensor);
 
 unsigned long lastWriteTime = 0;
 
@@ -68,13 +70,15 @@ void setup() {
 
       if (input.equalsIgnoreCase("Y")) {
         Serial.println("Starting Self-Checkup-Mode...");
-        diagnostics.startDiagnostics();    
+        diagnostics.startDiagnostics();  
+       
         
       }
 
       break; // Abbruch, Eingabe erhalten
     }
   }
+  /*
   Serial.println("[============================]");
   Serial.println("Starting Operating-Mode...");
 
@@ -87,7 +91,7 @@ void setup() {
   xTaskCreatePinnedToCore(sensorTask, "SensorTask", 4096, NULL, 3, NULL, 1); // Core 1
   xTaskCreatePinnedToCore(communicationTask, "CommTask", 4096, NULL, 2, NULL, 0);     // Core 0
 
-  
+  */
 }
 
 void loop() {
