@@ -77,4 +77,5 @@ AxisValues GyroscopeManager::getGyro() { return gyroCache; }
 AxisValues GyroscopeManager::getMag() { return magCache; }
 AxisValues GyroscopeManager::getLinearAcceleration() { return linearCache; }
 Quaternion GyroscopeManager::getQuat() { return quatCache; }
+Euler GyroscopeManager::getEuler() { return eulerCache; }
 Quaternion GyroscopeManager::getGameQuat() { return gameQuatCache;}

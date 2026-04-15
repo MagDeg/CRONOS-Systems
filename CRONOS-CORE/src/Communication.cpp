@@ -19,7 +19,7 @@ bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin,
   radio->setPALevel(RF24_PA_HIGH);  // starke, aber sichere Sendeleistung
   radio->setDataRate(RF24_1MBPS);   // stabiler als 2 Mbps
   radio->setChannel(90);            // außerhalb üblicher WLAN-Kanäle
-  radio->setAutoAck(true);         
+  radio->setAutoAck(true); //if true, it means, if data is send to that device, there is a confimation of receiving form this device to sender        
   radio->enableDynamicPayloads();   // nur nötige Bytes senden
   radio->setRetries(3, 15);         // 3 Versuche, max. Wartezeit
 
@@ -76,7 +76,7 @@ bool Communication::openSDFile(String file_name) {
   return file;
 }
 
-void Communication::saveDataForSDBuffered(TransmissionData data) {
+void Communication::saveDataForSDBuffered(DataToMaster data) {
   char buffer[256];
   char buf_drive[10], buf_acc_x[10], buf_acc_y[10], buf_euler[10], buf_gyro_z[10], buf_volt[10], buf_curr[10];
 
@@ -154,7 +154,7 @@ void Communication::closeSDFile() {
   
 }
 
-size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t* buffer, TransmissionData* data) {
+size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t* buffer, DataToMaster* data) {
     int pos = 1; //0 is later used für markers
     buffer[pos++] = identifier;
     buffer[pos++] = packet_number_counter; 
@@ -195,8 +195,7 @@ size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t*
 }; 
 
 
-
-void Communication::sendData(TransmissionData data) {
+void Communication::sendDataToMaster(DataToMaster data) {
   
   radio->stopListening();
 
@@ -222,15 +221,42 @@ void Communication::sendData(TransmissionData data) {
   delay(5);
 }
 
-bool Communication::receiveData(TransmissionData &data) {
+//NOTE: IF THERE A ANY ERROR WITH SENDING, REMOVE THE DYNAMIC PAYLOAD!!
+//TODO: IMPLEMENT HASH VALUE AS ADDITIONAL INTEGRITY CHECK (OPTIONAL)
+bool Communication::receiveDataFromMaster(DataFromMaster &data) {
+
+  radio->startListening();
+
+  if (!radio->available()) return false;
+
+  uint8_t buffer[64];
+
+  uint8_t len = radio->getDynamicPayloadSize();
+  radio->read(buffer, len);
+
+  // Integritätscheck (Marker + ggf. weitere Regeln)
+  if (!checkDataIntegrity(buffer, len)) {
+    return false;
+  }
+
+  // Payload extrahieren
+  memcpy(&data, buffer + 1, sizeof(DataFromMaster));
+
+  return true;
+}
+
+bool Communication::receiveDataFromSlave(DataToMaster &data) {
     radio->startListening();
 
     if (radio->available()) {
         uint8_t buffer[64];   // Maximalgröße
 
-        // Erstes Byte für Startmarker, zweites für Identifier
-        radio->read(buffer, sizeof(buffer)); 
+        // 🔴 FIX: echte Payload-Länge verwenden
+        uint8_t len = radio->getDynamicPayloadSize();
+        radio->read(buffer, len);
 
+        // Sicherheitscheck gegen Overflow
+        if (len > sizeof(buffer)) return false;
         // Identifier auslesen
         uint8_t identifier = buffer[1];
 
@@ -276,12 +302,12 @@ bool Communication::receiveData(TransmissionData &data) {
 }
 
 
-void Communication::addMakersToData(const TransmissionData& data, uint8_t* buffer, size_t packet_size) {
+void Communication::addMakersToData(const DataToMaster& data, uint8_t* buffer, size_t packet_size) {
   buffer[0] = '<';
   buffer[packet_size] = '>';
 }
 
-void Communication::convertBytesToStruct(TransmissionData& data, const uint8_t* buffer, size_t length) {
+void Communication::convertBytesToStruct(DataToMaster& data, const uint8_t* buffer, size_t length) {
   int pos = 2; // buffer[0]='<' , buffer[1]=identifier
 
   uint8_t identifier = buffer[1];

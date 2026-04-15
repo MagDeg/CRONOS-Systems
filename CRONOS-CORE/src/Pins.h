@@ -7,4 +7,5 @@
 #define SCL_PIN 27
 #define SDA_PIN 26
 #define HALL_SENSOR_PIN 32
+#define WIRE_PIN 15 //possibly wrong
 #define MODE 1

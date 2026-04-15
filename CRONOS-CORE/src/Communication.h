@@ -12,7 +12,8 @@ struct EulerYaw {
   float yaw;
 };
 
-struct TransmissionData {
+#pragma pack(push, 1)
+struct DataToMaster {
   //uint8_t identifier;
   //Just for received Data
 
@@ -34,6 +35,18 @@ struct TransmissionData {
   uint8_t temperature_4;
 
 };
+#pragma pack(pop)
+
+//pack to ensure, there is no alignment from the processor which would result in manipulation the data
+#pragma pack(push, 1)
+struct DataFromMaster {
+  uint8_t identifier;
+  uint8_t deactivateListeningToMaster;
+  uint8_t startDiagnostic;
+  uint8_t activateDriftCorrection;
+  int32_t intervalForStoringDataOnSD;
+};
+#pragma pack(pop)
 
 
 class Communication {
@@ -51,10 +64,10 @@ class Communication {
 
   Diagnostics* diagnostics;
 
-  void addMakersToData(const TransmissionData& data, uint8_t* buffer, size_t packet_size);
-  void convertBytesToStruct(TransmissionData& data, const uint8_t* buffer, size_t length);
+  void addMakersToData(const DataToMaster& data, uint8_t* buffer, size_t packet_size);
+  void convertBytesToStruct(DataToMaster& data, const uint8_t* buffer, size_t length);
   bool checkDataIntegrity(uint8_t* buffer, size_t length);
-  size_t extractDatapacketAsBytestring(uint8_t identifier, uint8_t* buffer, TransmissionData* data);
+  size_t extractDatapacketAsBytestring(uint8_t identifier, uint8_t* buffer, DataToMaster* data);
 
 
   public:
@@ -66,9 +79,13 @@ class Communication {
   bool checkRadioSignalstrength();
   bool checkWritingToSD();
   void removeSDFile(String file);
-  void saveDataForSDBuffered(TransmissionData data);
-  void sendData(TransmissionData data);
-  bool receiveData(TransmissionData &data);
+  void saveDataForSDBuffered(DataToMaster data);
+  void sendDataToMaster(DataToMaster data);
+  //TODO: IMPLEMENT SEND TO SLAVE
+  void sendDataToSlave(DataToMaster data);
+  bool receiveDataFromSlave(DataToMaster &data);
+  bool receiveDataFromMaster(DataFromMaster &data);
+
   bool openSDFile(String file_name);
   void writeBufferToSD();
   void closeSDFile();
