@@ -1,7 +1,6 @@
 #include "Communication.h"
 
-bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin, int module, Diagnostics* _diagnostics) {
-  m_serial = serial;
+bool Communication::initRadio(int _ce_pin, int _csn_pin, int module, Diagnostics* _diagnostics, bool auto_ack) {
   diagnostics = _diagnostics;
 
   ce_pin = _ce_pin;
@@ -10,7 +9,7 @@ bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin,
   radio = new RF24(ce_pin, csn_pin);
 
   if (!radio->begin()) {
-    Serial.println(F("[ERROR] Could not initialize Radiotransmitter!"));
+    m_serial.println(F("[ERROR] Could not initialize Radiotransmitter!"));
     diagnostics->addSystemStateToQueue(RADIO_INIT_FAILED);
     return false;
   }
@@ -19,7 +18,7 @@ bool Communication::initRadio(HardwareSerial* serial, int _ce_pin, int _csn_pin,
   radio->setPALevel(RF24_PA_HIGH);  // starke, aber sichere Sendeleistung
   radio->setDataRate(RF24_1MBPS);   // stabiler als 2 Mbps
   radio->setChannel(90);            // außerhalb üblicher WLAN-Kanäle
-  radio->setAutoAck(true); //if true, it means, if data is send to that device, there is a confimation of receiving form this device to sender        
+  radio->setAutoAck(auto_ack); //if true, it means, if data is send to that device, there is a confimation of receiving form this device to sender        
   radio->enableDynamicPayloads();   // nur nötige Bytes senden
   radio->setRetries(3, 15);         // 3 Versuche, max. Wartezeit
 
@@ -41,7 +40,7 @@ bool Communication::initSD(int sd_pin) {
     bool status = SD.begin(sd_pin);
 
     if (!status) {
-      m_serial->println("[ERROR] Failed to initialize SD-Card!");
+      m_serial.println("[ERROR] Failed to initialize SD-Card!");
       diagnostics->addSystemStateToQueue(SD_INIT_FAILED);
     }
 
@@ -69,7 +68,7 @@ bool Communication::checkRadioSignalstrength() {
 bool Communication::openSDFile(String file_name) {
   file = SD.open(file_name.c_str(), FILE_WRITE);
   if (!file) {
-    m_serial->println("[ERROR] There was an error while reading file!");
+    m_serial.println("[ERROR] There was an error while reading file!");
     diagnostics->addSystemStateToQueue(SD_FILE_OPEN_FAILED);
     return false;
   }
@@ -121,13 +120,13 @@ void Communication::writeBufferToSD() {
   if (dataBuffer.length() == 0) return;
 
   if (!file) {
-    m_serial->println("[ERROR] File on SD not Open!");
+    m_serial.println("[ERROR] File on SD not Open!");
     diagnostics->addSystemStateToQueue(SD_FILE_NOT_OPEN);
     return;
   }
 
   if (file.print(dataBuffer) == 0) {
-    m_serial->println("[ERROR] Could not write to SD!");
+    m_serial.println("[ERROR] Could not write to SD!");
     diagnostics->addSystemStateToQueue(SD_WRITE_FAILED);
 
   }
@@ -155,7 +154,7 @@ void Communication::closeSDFile() {
 }
 
 size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t* buffer, DataToMaster* data) {
-    int pos = 1; //0 is later used für markers
+    int pos = 0; 
     buffer[pos++] = identifier;
     buffer[pos++] = packet_number_counter; 
     packet_number_counter++;
@@ -194,6 +193,51 @@ size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t*
 
 }; 
 
+uint16_t Communication::generateCrc16(const uint8_t *data, size_t len) {
+  uint16_t crc = 0xFFFF;
+
+  for (size_t i = 0; i < len; i++) {
+    crc ^= (uint16_t)data[i];
+
+    for (uint8_t j = 0; j < 8; j++) {
+      if (crc & 1) crc = (crc >> 1) ^ 0xA001;
+      else crc >>= 1;
+    }
+  }
+
+  return crc;
+}
+
+void Communication::appendHash(uint8_t* buffer, size_t packet_size) {
+  // hash nur über Daten (ohne buffer[0])
+  uint16_t crc = generateCrc16(buffer, packet_size);
+
+  buffer[packet_size]     = (uint8_t)(crc & 0xFF);
+  buffer[packet_size + 1] = (uint8_t)(crc >> 8);
+}
+
+void Communication::sendDataToSlave(DataFromMaster &data) {
+  radio->stopListening();
+
+  uint8_t buffer[64];
+  size_t packet_size;
+  uint8_t pos = 0; 
+  buffer[pos++] = data.identifier;
+  buffer[pos++] = data.deactivateListeningToMaster;
+  buffer[pos++] = data.startDiagnostic;
+  buffer[pos++] = data.activateDriftCorrection;
+  memcpy(&buffer[pos], &data.intervalForStoringDataOnSD, sizeof(data.intervalForStoringDataOnSD));
+  pos += sizeof(data.intervalForStoringDataOnSD); 
+
+  packet_size = pos;
+  appendHash(buffer, packet_size); 
+  if (!radio->write(buffer, packet_size+2)) {
+    m_serial.println("[ERROR] Could not send data over radio!");
+  }
+
+
+
+}
 
 void Communication::sendDataToMaster(DataToMaster data) {
   
@@ -204,26 +248,40 @@ void Communication::sendDataToMaster(DataToMaster data) {
 
   //Datapacket 1
   packet_size = extractDatapacketAsBytestring(0, buffer, &data);
-  addMakersToData(data, buffer, packet_size);
-  if (!radio->write(buffer, packet_size +1)) {
-    m_serial->println("[ERROR] Could not send data over radio!");
-    diagnostics->addSystemStateToQueue(DATA_TRANSMISSION_FAILED);
-  }
+
+  appendHash(buffer, packet_size);
+  radio->write(buffer, packet_size+2);
   delay(5);
+
+
   //Datapacket 2
   packet_size = extractDatapacketAsBytestring(2, buffer, &data);
-  addMakersToData(data, buffer, packet_size);
+  appendHash(buffer, packet_size);
 
-  if (!radio->write(buffer, packet_size +1)) {
-    m_serial->println("[ERROR] Could not send data over radio!");
-    diagnostics->addSystemStateToQueue(DATA_TRANSMISSION_FAILED);
-  }
+  radio->write(buffer, packet_size+2);
   delay(5);
+}
+
+bool Communication::receiveDataFromMasterNoDynPayload(DataFromMaster &data) {
+  radio->startListening();
+
+  if (!radio->available()) return false;
+
+  uint8_t buffer[64];
+
+  radio->read(buffer, sizeof(DataFromMaster)+2);
+
+  if(!checkDataIntegrity(buffer, sizeof(DataFromMaster)+2)) {
+    return false;
+  }
+
+  memcpy(&data, buffer, sizeof(DataFromMaster));
+  return true; 
 }
 
 //NOTE: IF THERE A ANY ERROR WITH SENDING, REMOVE THE DYNAMIC PAYLOAD!!
 //TODO: IMPLEMENT HASH VALUE AS ADDITIONAL INTEGRITY CHECK (OPTIONAL)
-bool Communication::receiveDataFromMaster(DataFromMaster &data) {
+bool Communication::receiveDataFromMasterDynPayload(DataFromMaster &data) {
 
   radio->startListening();
 
@@ -234,83 +292,113 @@ bool Communication::receiveDataFromMaster(DataFromMaster &data) {
   uint8_t len = radio->getDynamicPayloadSize();
   radio->read(buffer, len);
 
+  if (len != sizeof(DataFromMaster) + 2) return false;
+
   // Integritätscheck (Marker + ggf. weitere Regeln)
   if (!checkDataIntegrity(buffer, len)) {
     return false;
   }
 
   // Payload extrahieren
-  memcpy(&data, buffer + 1, sizeof(DataFromMaster));
+  memcpy(&data, buffer, sizeof(DataFromMaster));
 
   return true;
 }
 
-bool Communication::receiveDataFromSlave(DataToMaster &data) {
+bool Communication::receiveDataFromSlaveNoDynPayload(DataToMaster &data) {
+  radio->startListening();
+  if(!radio->available()) {
+    return false;
+  }
+  uint8_t buffer[64];
+  radio->read(buffer, sizeof(buffer));
+
+  uint8_t identifier = buffer[0];
+  size_t expected_packet_size = 0;
+  switch(identifier){
+    case 0:
+        expected_packet_size = 1 /*identifier*/ + 1 /*packet_number*/
+                        + 2 /*timestamp*/ + 6 /*uint8_t Felder*/
+                        + sizeof(float)*3 /*current, voltage, drive*/
+                        + 2 /*temperature_4 & 5*/ 
+                        + 2 /*crc16*/; 
+        break;
+    case 2:
+        expected_packet_size = 1 /*identifier*/ + 1 /*packet_number*/
+                        + 2 /*timestamp*/ + sizeof(float)*4 /*lin_acc_x, lin_acc_y, gyro_z, euler*/
+                        + 2 /*crc16*/;
+        break;
+    default:
+        m_serial.println("[ERROR] Unknown identifier!");
+        return false;
+  }
+  if (!checkDataIntegrity(buffer, expected_packet_size)) {
+    //Invalid Datapacket
+    return false;
+  }
+  convertBytesToStruct(data, buffer, expected_packet_size-2);
+
+  return true;
+}
+
+bool Communication::receiveDataFromSlaveDynPayload(DataToMaster &data) {
     radio->startListening();
 
-    if (radio->available()) {
-        uint8_t buffer[64];   // Maximalgröße
+    if (!radio->available()) return false;
+    uint8_t buffer[64];   // Maximalgröße
 
-        // 🔴 FIX: echte Payload-Länge verwenden
-        uint8_t len = radio->getDynamicPayloadSize();
-        radio->read(buffer, len);
+    // 🔴 FIX: echte Payload-Länge verwenden
+    uint8_t len = radio->getDynamicPayloadSize();
+    // Sicherheitscheck
+    if (len < 6 || len > sizeof(buffer)) return false;
 
-        // Sicherheitscheck gegen Overflow
-        if (len > sizeof(buffer)) return false;
-        // Identifier auslesen
-        uint8_t identifier = buffer[1];
+    radio->read(buffer, len);
 
-        // Paketgröße anhand Identifier bestimmen (inklusive Start- und Endmarker)
-        size_t expected_size = 0;
-        switch(identifier) {
-            case 0:
-                expected_size = 1  /*<*/ + 1 /*identifier*/ + 1 /*packet_number*/
-                                + 2 /*timestamp*/ + 6 /*uint8_t Felder*/
-                                + sizeof(float)*3 /*current, voltage, drive*/
-                                + 2 /*temperature_4 & 5*/ 
-                                + 1 /*>*/; // Endmarker
-                break;
-            case 2:
-                expected_size = 1  /*<*/ + 1 /*identifier*/ + 1 /*packet_number*/
-                                + 2 /*timestamp*/ + sizeof(float)*4 /*lin_acc_x, lin_acc_y, gyro_z, euler*/
-                                + 1 /*>*/;
-                break;
-            default:
-                m_serial->println("[ERROR] Unknown identifier!");
-                return false;
-        }
+    // Identifier auslesen
+    uint8_t identifier = buffer[0];
 
-        // Prüfen, ob Länge passt
-        if (expected_size > sizeof(buffer)) {
-            m_serial->println("[ERROR] Packet too large!");
+    // Paketgröße anhand Identifier bestimmen (inklusive Start- und Endmarker)
+    size_t expected_size = 0;
+    switch(identifier) {
+        case 0:
+            expected_size = 1 /*identifier*/ + 1 /*packet_number*/
+                            + 2 /*timestamp*/ + 6 /*uint8_t Felder*/
+                            + sizeof(float)*3 /*current, voltage, drive*/
+                            + 2 /*temperature_4 & 5*/ 
+                            + 2 /*crc16*/; 
+            break;
+        case 2:
+            expected_size =  1 /*identifier*/ + 1 /*packet_number*/
+                            + 2 /*timestamp*/ + sizeof(float)*4 /*lin_acc_x, lin_acc_y, gyro_z, euler*/
+                            + 2 /*crc16*/;
+            break;
+        default:
+            m_serial.println("[ERROR] Unknown identifier!");
             return false;
-        }
-
-        // Start- und Endmarker prüfen
-        if(!checkDataIntegrity(buffer, expected_size)) {
-            m_serial->println("[ERROR] Invalid start or end marker!");
-            return false;
-        }
-
-        // Bytes ins Struct konvertieren
-        convertBytesToStruct(data, buffer, expected_size);
-
-        return true;
     }
 
-    return false; // keine Daten verfügbar
+    // Prüfen, ob Länge passt
+    if(len < expected_size) return false; 
+
+    // Start- und Endmarker prüfen
+    if(!checkDataIntegrity(buffer, len)) {
+        m_serial.println("[ERROR] Invalid start or end marker!");
+        return false;
+    }
+
+    // Bytes ins Struct konvertieren
+    convertBytesToStruct(data, buffer, len-2);
+
+    return true;
+
 }
 
 
-void Communication::addMakersToData(const DataToMaster& data, uint8_t* buffer, size_t packet_size) {
-  buffer[0] = '<';
-  buffer[packet_size] = '>';
-}
 
 void Communication::convertBytesToStruct(DataToMaster& data, const uint8_t* buffer, size_t length) {
-  int pos = 2; // buffer[0]='<' , buffer[1]=identifier
+  int pos = 0;
 
-  uint8_t identifier = buffer[1];
+  uint8_t identifier = buffer[pos++];
 
   data.packet_number = buffer[pos++];
 
@@ -354,9 +442,14 @@ void Communication::convertBytesToStruct(DataToMaster& data, const uint8_t* buff
 }
 
 bool Communication::checkDataIntegrity(uint8_t* buffer, size_t length) {
-  if (length == 0) return false;
-  if (buffer[0] == '<' && buffer[length - 1] == '>') {
-    return true;
-  }
-  return false;
+
+  if (length < 6) return false;
+
+  uint16_t received =
+    buffer[length - 2] | (buffer[length - 1] << 8);
+
+  uint16_t calc = generateCrc16(buffer, length - 2);
+
+  return received == calc;
 }
+

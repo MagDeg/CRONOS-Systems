@@ -43,7 +43,7 @@ enum SystemState {
 
 class Diagnostics {
     protected:
-        HardwareSerial* serial{};
+        HardwareSerial& serial;
         Communication& com;
         TemperatureSensorControl& temp_sensor;
         ElectricalMeasurements& electrical_measurement;
@@ -53,7 +53,7 @@ class Diagnostics {
         SystemStateQueue system_state_queue; 
         void sendDiagnosticsMessage(bool status, String pos_msg, String neg_msg);
     public:
-        Diagnostics(HardwareSerial* m_serial, Communication& m_com, TemperatureSensorControl& temp, ElectricalMeasurements& electrics, GyroscopeManager& _gyro_manager, SpeedSensor& _speed_sensor)  : speed_sensor(_speed_sensor), gyro_manager(_gyro_manager), serial(m_serial), com(m_com), temp_sensor(temp), electrical_measurement(electrics) {};
+        Diagnostics(HardwareSerial& m_serial, Communication& m_com, TemperatureSensorControl& temp, ElectricalMeasurements& electrics, GyroscopeManager& _gyro_manager, SpeedSensor& _speed_sensor)  : speed_sensor(_speed_sensor), gyro_manager(_gyro_manager), serial(m_serial), com(m_com), temp_sensor(temp), electrical_measurement(electrics) {};
         void startDiagnostics();
         uint8_t getSystemStateFromQueue();
         void addSystemStateToQueue(SystemState state);

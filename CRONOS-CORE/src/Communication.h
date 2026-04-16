@@ -8,10 +8,6 @@
 
 class Diagnostics; 
 
-struct EulerYaw {
-  float yaw;
-};
-
 #pragma pack(push, 1)
 struct DataToMaster {
   //uint8_t identifier;
@@ -51,7 +47,7 @@ struct DataFromMaster {
 
 class Communication {
   protected:
-  HardwareSerial* m_serial{};
+  HardwareSerial& m_serial;
   //data to access files on sd
   File file;
   int ce_pin;
@@ -71,9 +67,13 @@ class Communication {
 
 
   public:
-  bool initRadio(HardwareSerial* serial, int ce_pin, int csn_pin, int module, Diagnostics* _diagnostics);
+  Communication(HardwareSerial& serial) : m_serial(serial) {}; 
+  bool initRadio(int ce_pin, int csn_pin, int module, Diagnostics* _diagnostics, bool auto_ack = false);
+  
+  //TODO: Implement Functions
   void startAsReceiver();
   void startAsSender();
+  
   bool initSD(int sd_pin);
   bool checkRadioConnection();
   bool checkRadioSignalstrength();
@@ -81,10 +81,19 @@ class Communication {
   void removeSDFile(String file);
   void saveDataForSDBuffered(DataToMaster data);
   void sendDataToMaster(DataToMaster data);
+  
   //TODO: IMPLEMENT SEND TO SLAVE
-  void sendDataToSlave(DataToMaster data);
-  bool receiveDataFromSlave(DataToMaster &data);
-  bool receiveDataFromMaster(DataFromMaster &data);
+  void sendDataToSlave(DataFromMaster &data);
+
+  bool receiveDataFromSlaveDynPayload(DataToMaster &data);
+  bool receiveDataFromMasterDynPayload(DataFromMaster &data);
+
+  bool receiveDataFromSlaveNoDynPayload(DataToMaster &data);
+  bool receiveDataFromMasterNoDynPayload(DataFromMaster &data);
+
+  uint16_t generateCrc16(const uint8_t *data, size_t len);
+
+  void appendHash(uint8_t *buffer, size_t packet_size);
 
   bool openSDFile(String file_name);
   void writeBufferToSD();

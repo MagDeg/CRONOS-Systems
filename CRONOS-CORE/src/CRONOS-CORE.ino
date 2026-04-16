@@ -17,11 +17,11 @@ DeviceAddress battery_temperature_sensor = {0x28, 0x61, 0x64, 0x35, 0xF9, 0x7F, 
 
 QueueHandle_t sensorQueue;
 TemperatureSensorControl temperatureController(engine_temperature_sensor, battery_temperature_sensor); 
-Communication com;
+Communication com(Serial);
 ElectricalMeasurements electrics;
-SpeedSensor speedSensor(NULL);
+SpeedSensor speedSensor(10);
 GyroscopeManager gyro_manager;
-Diagnostics diagnostics(&Serial, com, temperatureController, electrics, gyro_manager, speedSensor);
+Diagnostics diagnostics(Serial, com, temperatureController, electrics, gyro_manager, speedSensor);
 
 unsigned long lastWriteTime = 0;
 uint16_t lastTxTime = 0; 
@@ -68,7 +68,7 @@ void communicationTask(void* pvParameters) {
     if(xQueueReceive(sensorQueue, &data_to_master, 0)) {
       com.sendDataToMaster(data_to_master);
     }
-    com.receiveDataFromMaster(data_from_master);
+    com.receiveDataFromMasterDynPayload(data_from_master);
     taskYIELD();
   }
 }
@@ -109,7 +109,7 @@ void setup() {
   sensorQueue = xQueueCreate(1, sizeof(DataToMaster));
 
   //sämtliche inits aller Klassen
-  com.initRadio(&Serial, CE_PIN, CSN_PIN, 1, &diagnostics);
+  com.initRadio(CE_PIN, CSN_PIN, 1, &diagnostics, true);
   com.initSD(SD_PIN);
   electrics.init(&Wire, &Serial, &diagnostics);
   speedSensor.init(&Serial, HALL_SENSOR_PIN, &diagnostics);

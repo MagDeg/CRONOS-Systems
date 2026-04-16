@@ -6,7 +6,7 @@ void Diagnostics::startDiagnostics(){
     Serial.println(" Self-Checkup-Mode successfully started!");
     Serial.println();
     Serial.println(">>>Checking Communication - Radio<<<");
-    sendDiagnosticsMessage(com.initRadio(serial, CE_PIN, CSN_PIN, MODE, this), "Radio is successfully initialized!", "Radio could not be initialized!");
+    sendDiagnosticsMessage(com.initRadio(CE_PIN, CSN_PIN, MODE, this), "Radio is successfully initialized!", "Radio could not be initialized!");
     yield(); // WDT füttern
     delay(5);
     sendDiagnosticsMessage(com.checkRadioConnection(), "Data Transmission over Radio successfull!", "Data Transmission over Radio failed!");
@@ -21,7 +21,6 @@ void Diagnostics::startDiagnostics(){
     sendDiagnosticsMessage(com.checkWritingToSD(), "Writing to SD-Card was successfull!", "Could not write to SD-Card!");
     com.closeSDFile();
     com.removeSDFile("/Checkup.txt");
-    /*
     Serial.print(">>>Checking Temperature Sensors<<<");
     SensorStatus s = temp_sensor.checkSensorStatus();
     sendDiagnosticsMessage(s.engineFound, "Engine sensor found!", "Engine sensor not found!");
@@ -30,7 +29,6 @@ void Diagnostics::startDiagnostics(){
     sendDiagnosticsMessage(!isnan(value[0]), "Receivced valid values from engine sensor!", "Received invalid values from engine sensor!");
     sendDiagnosticsMessage(!isnan(value[1]), "Receivced valid values from battery sensor!", "Received invalid values from battery sensor!");
     sendDiagnosticsMessage(!isnan(temp_sensor.getChipTemperature()), "Received valid values from chip sensor!", "Received invalid values from chip sensor!");
-    */
     Serial.println(">>>Checking Electrical Measurements<<<");
     Wire.begin(SDA_PIN, SCL_PIN);
     sendDiagnosticsMessage(electrical_measurement.init(&Wire, &Serial, this), "INA219 successfully initialized!" , "INA219 could not be initialized!");
