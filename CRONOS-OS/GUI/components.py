@@ -1,7 +1,7 @@
 # ----------------------------
 # Komponenten
 # ----------------------------
-from dash import html
+from dash import html, dcc
 
 from GUI.Wigets.speed_gauge import combinedSpeedGauge
 
@@ -27,13 +27,37 @@ def RightSidebar():
         SidebarPanel("Buttons")
     ], className="sidebar")
 
-def Panel(text):
-    return html.Div(text, className="panel")
+def Panel(content, link=None, variant=None):
+
+    classes = ["panel"]
+
+    if variant:
+        classes.append(f"panel-{variant}")
+
+    inner = content
+
+    if link:
+        inner = dcc.Link(
+            content,
+            href=link,
+            style={
+                "color": "inherit",
+                "textDecoration": "none",
+                "width": "100%",
+                "height": "100%"
+            }
+        )
+
+    return html.Div(inner, className=" ".join(classes))
 
 def MainContent():
     return html.Div([
         html.Div([
-            Panel(combinedSpeedGauge(120, 80 , 50)),
+            Panel(
+                combinedSpeedGauge(120, 80, 50),
+                link="/panel1",
+                variant="gauge"
+            ),
             Panel("Panel 4"),
             Panel("Panel 3")
         ], className="panel-row"),

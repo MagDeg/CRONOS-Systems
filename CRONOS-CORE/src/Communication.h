@@ -57,6 +57,8 @@ class Communication {
   uint8_t link_address[6] = {'R','X','1','2','3',0};
   String dataBuffer;
   uint8_t packet_number_counter = 0; 
+  unsigned long last_flush_time = 0;
+  const unsigned long FLUSH_INTERVAL = 30000;
 
   Diagnostics* diagnostics;
 
@@ -70,10 +72,6 @@ class Communication {
   Communication(HardwareSerial& serial) : m_serial(serial) {}; 
   bool initRadio(int ce_pin, int csn_pin, int module, Diagnostics* _diagnostics, bool auto_ack = false);
   
-  //TODO: Implement Functions
-  void startAsReceiver();
-  void startAsSender();
-  
   bool initSD(int sd_pin);
   bool checkRadioConnection();
   bool checkRadioSignalstrength();
@@ -82,7 +80,7 @@ class Communication {
   void saveDataForSDBuffered(DataToMaster data);
   void sendDataToMaster(DataToMaster data);
   
-  //TODO: IMPLEMENT SEND TO SLAVE
+
   void sendDataToSlave(DataFromMaster &data);
 
   bool receiveDataFromSlaveDynPayload(DataToMaster &data);

@@ -131,7 +131,12 @@ void Communication::writeBufferToSD() {
 
   }
   
-  file.flush();
+  
+  if (millis() - last_flush_time > FLUSH_INTERVAL) {
+    file.flush();
+    last_flush_time = millis();
+  }
+
   dataBuffer = "";
 }
 

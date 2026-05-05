@@ -23,16 +23,18 @@ def SpeedGaugeGraph(value=120):
         paper_bgcolor="rgba(0,0,0,0)",
         font={'color': "white"},
         margin=dict(l=0, r=0, t=0, b=0),
-        autosize=True,
-        transition={'duration': 250, 'easing': 'cubic-in-out'}
+        height=None,
     )
 
     return dcc.Graph(
-        id="speed-gauge-graph",
+        id='speed-gauge-graph',
         figure=fig,
-        config={'displayModeBar': False},
-        style={"width": "100%", "height": "100%", "flex": "1 1 auto"},
-        responsive=True
+        config={"displayModeBar": False},
+        style={
+            "width": "100%",
+            "height": "100%",
+            "flex": "1"
+        }
     )
 
 # -----------------------------
@@ -80,43 +82,50 @@ def SpeedGaugeStats(avg=100, min_val=80, max_val=150):
 # -----------------------------
 # Kombinierte SpeedGauge (Graph + Stats)
 # -----------------------------
+
+
 def combinedSpeedGauge(value=120, avg=100, min_val=80, max_val=150):
+
     return html.Div([
-        # Headline
+
+        # HEADER (fix)
         html.Div(
-            html.Span("Geschwindigkeit", style={
-                "fontSize": "16px",
-                "fontWeight": "600",
-                "textAlign": "center"
-            }),
+            "Geschwindigkeit",
             style={
+                "height": "30px",
+                "flex": "0 0 auto",
                 "display": "flex",
                 "alignItems": "center",
-                "justifyContent": "center",
-                "width": "100%",
-                "marginBottom": "4px",  # kleiner Abstand zur Gauge
-                "flex": "0 0 auto"
+                "justifyContent": "center"
             }
         ),
 
-        # Gauge
-        html.Div(SpeedGaugeGraph(value=value), style={
-            "width": "100%",
-            "height": "60%",
-            "display": "flex",
-            "alignItems": "center",
-            "justifyContent": "center",
-            "marginBottom": "4px"  # kleiner Abstand zu Stats
-        }),
+        # GAUGE (nimmt ALLES was übrig bleibt)
+        html.Div(
+            SpeedGaugeGraph(value=value),
+            style={
+                "flex": "1 1 auto",
+                "minHeight": 0,
+                "overflow": "hidden"
+            }
+        ),
 
-        # Stats
-        SpeedGaugeStats(avg=avg, min_val=min_val, max_val=max_val)
+        # STATS (fixe Zone unten)
+        html.Div(
+            SpeedGaugeStats(avg=avg, min_val=min_val, max_val=max_val),
+            style={
+                "height": "60px",
+                "flex": "0 0 auto",
+                "display": "flex",
+                "alignItems": "center",
+                "justifyContent": "space-around"
+            }
+        )
+
     ], style={
         "display": "flex",
         "flexDirection": "column",
-        "alignItems": "center",
-        "justifyContent": "center",  # vertikal zentriert → oben & unten gleich
-        "width": "100%",
         "height": "100%",
-        "padding": "5px"
+        "minHeight": 0,
+        "overflow": "hidden"
     })

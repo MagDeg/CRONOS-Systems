@@ -9,7 +9,7 @@
 #include <Wire.h>
 #include <queue>
 
-
+#define SD_FILE_NAME "SensorData"
 
 
 DeviceAddress engine_temperature_sensor = {0x28, 0x55, 0x9A, 0x5B, 0x41, 0x24, 0x0B, 0xDD};
@@ -50,6 +50,7 @@ void sensorTask(void* pvParameters) {
     packet_number++;
     com.saveDataForSDBuffered(data);
     if(millis() - lastWriteTime > storing_interval) {
+
       com.writeBufferToSD();
       lastWriteTime = millis();
     }
@@ -111,6 +112,7 @@ void setup() {
   //sämtliche inits aller Klassen
   com.initRadio(CE_PIN, CSN_PIN, 1, &diagnostics, true);
   com.initSD(SD_PIN);
+  com.openSDFile(SD_FILE_NAME);
   electrics.init(&Wire, &Serial, &diagnostics);
   speedSensor.init(&Serial, HALL_SENSOR_PIN, &diagnostics);
   temperatureController.init(WIRE_PIN);
