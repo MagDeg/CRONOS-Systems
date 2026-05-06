@@ -1,3 +1,4 @@
+
 /* -----------------------------
    Global
 ----------------------------- */
@@ -13,6 +14,7 @@ html, body {
     color: #a0e0ff;
     position: relative;
 }
+
 
 /* HUD Raster */
 body::before {
@@ -50,6 +52,7 @@ body::before {
     backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(0,191,255,0.4);
     color: #00bfff;
+
 }
 
 .footer {
