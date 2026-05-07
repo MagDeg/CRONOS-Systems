@@ -1,0 +1,11 @@
+# IDE / Editor
+.idea/
+.vscode/
+
+# alle __pycache__-Ordner in beliebiger Tiefe ignorieren
+__pycache__/
+**/__pycache__/
+
+# Projekt-spezifisch
+CRONOS-CORE/.idea/
+CRONOS-CORE/.vscode/settings.json
