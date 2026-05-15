@@ -1,6 +1,6 @@
 import serial
 import serial.tools.list_ports
-from data_struct import *
+from data_structs.received_data import *
 import struct
 
 class SerialCommunication:

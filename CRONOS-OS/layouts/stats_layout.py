@@ -1,9 +1,11 @@
 from components.accel_gforce_panel import AccelGForceDistance
+from components.connection_panel import combinedNetworkPanel
 from components.panels import *
 from components.electric_values import combinedPowerPanel
 from components.speed_drive_panel import CompactSpeedDriveGauges
 from components.speed_gauge import combinedSpeedGauge
 from components.temperature_panel import combinedTempPanel
+from components.time_panel import TimePanel
 
 
 def get_stats_layout():
@@ -48,14 +50,20 @@ def get_stats_layout():
             ),
             Panel(
                 index=4,
-                content=None,
+                content=combinedNetworkPanel(index=0,
+                             packet_loss=0.0,
+                             delay_values=[10,12,9,11,13,10,9,12],
+                             connection_status="disconnected",
+                             packet_stats=(None,None,None),
+                             title="Netzwerk",
+                             accent_color="#00aaff"),
                 widget="gauge",
                 link="/panel1",
                 config={"unit": "km/h", "max": 200},
             ),
             Panel(
                 index=5,
-                content=None,
+                content=TimePanel(index=0, title="Countdown", accent_color="#00aaff"),
                 widget="gauge",
                 link="/panel1",
                 config={"unit": "km/h", "max": 200},

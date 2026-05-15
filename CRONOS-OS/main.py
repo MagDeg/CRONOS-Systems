@@ -1,17 +1,20 @@
 
 from callbacks.register_callbacks import register_callbacks
 from layouts.main_layout import *
-
+from serial_background_reading import SerialReader
+from data_structs.received_data import TransmittedData
 
 app = Dash(__name__, suppress_callback_exceptions=True)
 app.title = "C.R.O.N.O.S. OS"
+
+
 
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
     get_main_layout(),
     dcc.Interval(
         id="gauge-update-interval",
-        interval=500,  # Update alle 500ms
+        interval=100,  # Update alle 500ms
         n_intervals=0
     )
 ], className="app-container")
@@ -19,5 +22,9 @@ app.layout = html.Div([
 
 register_callbacks(app)
 
+#reader = SerialReader("/dev/ttyUSB0", 115200)
+
+
 if __name__ == "__main__":
+    #reader.start()
     app.run(debug=True, host="127.0.0.1", port=8050)
