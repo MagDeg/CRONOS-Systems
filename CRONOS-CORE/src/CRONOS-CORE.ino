@@ -9,7 +9,7 @@
 #include <Wire.h>
 #include <queue>
 
-#define SD_FILE_NAME "SensorData"
+#define SD_FILE_NAME "/SensorData"
 
 
 DeviceAddress engine_temperature_sensor = {0x28, 0x55, 0x9A, 0x5B, 0x41, 0x24, 0x0B, 0xDD};
@@ -94,8 +94,9 @@ void setup() {
 
       if (input.equalsIgnoreCase("Y")) {
         Serial.println("Starting Self-Checkup-Mode...");
-        diagnostics.startDiagnostics();  
-       
+        diagnostics.startDiagnostics();
+        delay(5000);
+        ESP.restart();
         
       }
 
@@ -113,15 +114,18 @@ void setup() {
   com.initRadio(CE_PIN, CSN_PIN, 1, &diagnostics, true);
   com.initSD(SD_PIN);
   com.openSDFile(SD_FILE_NAME);
-  electrics.init(&Wire, &Serial, &diagnostics);
+  Wire.begin(SDA_PIN, SCL_PIN);
+  electrics.initINA(&Wire, &Serial, &diagnostics);
+  electrics.initMAX(&Wire, &diagnostics);
   speedSensor.init(&Serial, HALL_SENSOR_PIN, &diagnostics);
   temperatureController.init(WIRE_PIN);
-  gyro_manager.init(&diagnostics);
+  gyro_manager.init(&diagnostics, &Wire);
 
   // Tasks auf zwei Cores starten
+  /*
   xTaskCreatePinnedToCore(sensorTask, "SensorTask", 4096, NULL, 3, NULL, 1); // Core 1
   xTaskCreatePinnedToCore(communicationTask, "CommTask", 4096, NULL, 2, NULL, 0);     // Core 0
-
+  */
   
 }
 

@@ -36,6 +36,7 @@ enum SystemState {
     SD_FILE_NOT_OPEN = 16,
     BNO_INIT_FAILED = 17, 
     HALL_SENSOR_NOT_DETECTED = 19,
+    MAX17048_INIT_FAILED = 20,
 
 };
 
