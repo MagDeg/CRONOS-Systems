@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#050814"/>
+      <stop offset="100%" stop-color="#0a1628"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00d4ff"/>
+      <stop offset="100%" stop-color="#0088cc"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="url(#bg)" stroke="rgba(0,191,255,0.3)" stroke-width="1"/>
+  <circle cx="32" cy="32" r="22" fill="none" stroke="url(#ring)" stroke-width="3" stroke-dasharray="100 38" transform="rotate(-90 32 32)"/>
+  <circle cx="32" cy="32" r="22" fill="none" stroke="rgba(0,191,255,0.15)" stroke-width="3"/>
+  <circle cx="32" cy="10" r="3" fill="#00d4ff"/>
+  <circle cx="32" cy="54" r="3" fill="#ff5050"/>
+  <line x1="32" y1="10" x2="32" y2="54" stroke="rgba(0,191,255,0.2)" stroke-width="1"/>
+  <text x="32" y="40" text-anchor="middle" fill="#00d4ff" font-family="sans-serif" font-size="14" font-weight="bold">OS</text>
+  <line x1="10" y1="32" x2="16" y2="32" stroke="#00d4ff" stroke-width="2" stroke-linecap="round"/>
+  <line x1="48" y1="32" x2="54" y2="32" stroke="#00d4ff" stroke-width="2" stroke-linecap="round"/>
+  <line x1="12" y1="22" x2="16" y2="24" stroke="rgba(0,191,255,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="48" y1="24" x2="52" y2="22" stroke="rgba(0,191,255,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="12" y1="42" x2="16" y2="40" stroke="rgba(0,191,255,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="48" y1="40" x2="52" y2="42" stroke="rgba(0,191,255,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

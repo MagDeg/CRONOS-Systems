@@ -1,0 +1,237 @@
+/* C.R.O.N.O.S. OS - Qt Style Sheet */
+
+/* Global */
+QWidget {
+    color: #a0e0ff;
+    font-family: "Segoe UI", "Ubuntu", "DejaVu Sans", sans-serif;
+    font-size: 12px;
+}
+
+QMainWindow {
+    background-color: #050814;
+}
+
+/* App Container */
+#AppContainer {
+    background-color: #050814;
+}
+
+/* Top Bar */
+#TopBar {
+    background-color: rgba(5, 10, 20, 0.95);
+    border-bottom: 1px solid rgba(0, 191, 255, 0.4);
+}
+
+#TopBarTitle {
+    color: #00bfff;
+    font-size: 26px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* Content Container */
+#ContentContainer {
+    background-color: transparent;
+}
+
+/* Sidebar */
+#Sidebar {
+    background-color: rgba(5, 10, 20, 0.95);
+    border-left: 1px solid rgba(0, 191, 255, 0.2);
+}
+
+/* Main */
+#Main {
+    background-color: transparent;
+}
+
+#PanelTitle {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 2px 0;
+}
+
+/* Metric Blocks */
+#MetricBlock {
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+}
+
+#MetricLabel {
+    color: #a0e0ff;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+#MetricValue {
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+#MetricUnit {
+    color: #a0e0ff;
+    font-size: 13px;
+}
+
+/* Stats */
+#StatLabel {
+    color: #a0e0ff;
+    font-size: 10px;
+    opacity: 0.6;
+}
+
+#StatValue {
+    color: #ffffff;
+    font-size: 12px;
+}
+
+/* Temperature Bar */
+#TempBar {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: none;
+    border-radius: 4px;
+    max-height: 8px;
+}
+
+#TempBar::chunk {
+    background-color: #00aaff;
+    border-radius: 4px;
+}
+
+/* Settings */
+#SettingsPanel {
+    background-color: transparent;
+}
+
+#SettingsLabel {
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+#SettingsInput {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+}
+
+#SettingsButton {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
+}
+
+#SettingsButton:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+#SettingsButton:pressed {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+#StartDisplay {
+    color: #00aaff;
+    font-size: 26px;
+    font-weight: 700;
+}
+
+#CsvLabel {
+    color: rgba(0, 191, 255, 0.6);
+    font-size: 11px;
+    font-family: "Consolas", "Courier New", monospace;
+}
+
+#Separator {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Switch Label */
+#SwitchLabel {
+    color: #ffffff;
+    font-size: 12px;
+}
+
+/* Time Panel */
+#TimeValue {
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* Detail Text */
+#DetailText {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+}
+
+/* Status Dot */
+#StatusDot {
+    min-width: 14px;
+    min-height: 14px;
+    max-width: 14px;
+    max-height: 14px;
+}
+
+/* Placeholder */
+#PlaceholderText {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 16px;
+}
+
+/* Value Separator */
+#ValueSeparator {
+    background-color: rgba(0, 191, 255, 0.15);
+    max-height: 1px;
+    min-height: 1px;
+}
+
+/* Log Output */
+#LogOutput {
+    background-color: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 191, 255, 0.12);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    color: rgba(160, 224, 255, 0.7);
+    font-size: 10px;
+    font-family: "Consolas", "Ubuntu Mono", "DejaVu Sans Mono", monospace;
+    padding: 4px;
+}
+
+#HeadingButton {
+    background-color: rgba(0, 191, 255, 0.08);
+    color: #00bfff;
+    border: 1px solid rgba(0, 191, 255, 0.35);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 0;
+}
+
+#HeadingButton:hover {
+    background-color: rgba(0, 191, 255, 0.18);
+    border-color: rgba(0, 191, 255, 0.6);
+}
+
+#HeadingButton:pressed {
+    background-color: rgba(0, 191, 255, 0.04);
+}
+
+#CommandInput {
+    background-color: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(0, 191, 255, 0.12);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    color: #a0e0ff;
+    font-size: 10px;
+    font-family: "Consolas", "Ubuntu Mono", "DejaVu Sans Mono", monospace;
+    padding: 4px 6px;
+}
