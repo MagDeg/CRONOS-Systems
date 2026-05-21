@@ -15,6 +15,7 @@ bool ElectricalMeasurements::initINA(TwoWire* wire,
     ina_ok = false;
     return false;
   }
+  ina219.setCalibration_32V_2A();
 
   ina_ok = true;
   return true;
@@ -41,12 +42,8 @@ bool ElectricalMeasurements::initMAX(TwoWire* wire,
 
 
 float ElectricalMeasurements::getVoltage(){
-  if(!i2c) return 0.0;
-
-  float busVoltage = ina219.getBusVoltage_V();
-  float shuntVoltage = ina219.getShuntVoltage_mV();
-
-  return busVoltage + (shuntVoltage/1000);
+  if(!ina_ok) return 0.0;
+  return ina219.getBusVoltage_V();
 }
 
 float ElectricalMeasurements::getCurrent() {

@@ -27,6 +27,7 @@ protected:
 
 public:
   SpeedSensor(const int BUFFER_SIZE);
+  bool read(); 
   void init(HardwareSerial* serial, int sensor_pin, Diagnostics* _diagnostics); 
   float getDriveRPM();
 };

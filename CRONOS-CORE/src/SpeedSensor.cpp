@@ -15,6 +15,10 @@ void SpeedSensor::init(HardwareSerial* serial, int sensor_pin, Diagnostics* _dia
   lastState = digitalRead(_sensor_pin);
 }
 
+bool SpeedSensor::read() {
+  return digitalRead(_sensor_pin);
+}
+
 void SpeedSensor::addValueToBuffer(float value) {
   buffer[bufferIndex] = value;
   bufferIndex = (bufferIndex + 1) % _BUFFER_SIZE;

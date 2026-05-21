@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <DallasTemperature.h>
+#include "Diagnostics.h"
 
 
 class Diagnostics;
@@ -20,6 +21,8 @@ class TemperatureSensorControl {
     OneWire* oneWire;
     DallasTemperature* sensors;
     Diagnostics* diagnostics;
+
+    bool initialized = false;
 
   public:
     TemperatureSensorControl(const DeviceAddress& sensor_motor,  const DeviceAddress& sensor_battery);

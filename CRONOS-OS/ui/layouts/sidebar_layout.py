@@ -340,9 +340,9 @@ class RightSidebar(QWidget):
         self._cmd.add_history(raw)
         # Echo the command to the log so there's a record of what was executed
         self._log.append(f"> {raw}")
-        # Split into command name and arguments (lowercased for case-insensitive matching)
-        parts = raw.lower().split()
-        cmd = parts[0]
+        # Split into command name (lowercased for case-insensitive matching) and arguments (preserve case)
+        parts = raw.split()
+        cmd = parts[0].lower()
         args = parts[1:]
 
         # Dispatch table mapping command names to their handler methods

@@ -42,7 +42,6 @@ bool GyroscopeManager::init(Diagnostics* _diagnostics, TwoWire* wire) {
 
     diagnostics = _diagnostics;
     connected = bno.begin_I2C();
-    Serial.println(connected);
     if (!connected) {
         diagnostics->addSystemStateToQueue(BNO_INIT_FAILED);
         return false;
@@ -58,9 +57,9 @@ bool GyroscopeManager::init(Diagnostics* _diagnostics, TwoWire* wire) {
 }
 
 void GyroscopeManager::update() {
-    Serial.println("CONNECTED?");
+
     if (!connected) return;
-    Serial.println("UPDATED");
+
     if(bno.wasReset()) setReports(); 
 
     sh2_SensorValue_t sv;

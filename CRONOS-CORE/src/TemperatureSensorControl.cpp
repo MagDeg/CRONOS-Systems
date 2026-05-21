@@ -6,9 +6,24 @@ TemperatureSensorControl::TemperatureSensorControl(const DeviceAddress& sensor_e
 }
 
 void TemperatureSensorControl::init(int wire_pin) {
+
+  if (initialized) return;
+
   oneWire = new OneWire(wire_pin);
+  if (!oneWire) {
+    if (diagnostics) diagnostics->addSystemStateToQueue(SENSOR_INIT_FAILED);
+    return;
+  }
+
   sensors = new DallasTemperature(oneWire);
+  if (!sensors) {
+    if (diagnostics) diagnostics->addSystemStateToQueue(SENSOR_INIT_FAILED);
+    return;
+  }
+
   sensors->begin();
+
+  initialized = true;
 }
 
 void TemperatureSensorControl::linkDiagnostics(Diagnostics* _diagnostics) {
@@ -19,6 +34,11 @@ void TemperatureSensorControl::linkDiagnostics(Diagnostics* _diagnostics) {
 float* TemperatureSensorControl::getTemperatureOfSensors() {
 
   static float data[2];
+    if (!sensors) {
+    data[0] = NAN;
+    data[1] = NAN;
+    return data;
+  }
   sensors->requestTemperatures();
   for (int i = 0; i < 2; i++) {
     if (i == 0) {

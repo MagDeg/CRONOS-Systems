@@ -37,12 +37,14 @@ enum SystemState {
     BNO_INIT_FAILED = 17, 
     HALL_SENSOR_NOT_DETECTED = 19,
     MAX17048_INIT_FAILED = 20,
+    SENSOR_INIT_FAILED = 21,
 
 };
 
 
 
 class Diagnostics {
+        int error_count = 0; 
     protected:
         HardwareSerial& serial;
         Communication& com;

@@ -4,6 +4,7 @@
 
 void Diagnostics::startDiagnostics() {
 
+
     Serial.println(" Self-Checkup-Mode successfully started!");
     Serial.println();
 
@@ -60,8 +61,11 @@ void Diagnostics::startDiagnostics() {
     com.closeSDFile();
     com.removeSDFile("/Checkup.txt");
 
+
     // -------------------- TEMPERATURE --------------------
-    /*Serial.println(">>>Checking Temperature Sensors<<<");
+    Serial.println(">>>Checking Temperature Sensors<<<");
+
+    temp_sensor.init(WIRE_PIN);
 
     SensorStatus s = temp_sensor.checkSensorStatus();
 
@@ -70,10 +74,25 @@ void Diagnostics::startDiagnostics() {
 
     float* value = temp_sensor.getTemperatureOfSensors();
 
-    sendDiagnosticsMessage(!isnan(value[0]), "Received valid values from engine sensor!", "Received invalid values from engine sensor!");
-    sendDiagnosticsMessage(!isnan(value[1]), "Received valid values from battery sensor!", "Received invalid values from battery sensor!");
-    sendDiagnosticsMessage(!isnan(temp_sensor.getChipTemperature()), "Received valid values from chip sensor!", "Received invalid values from chip sensor!");
-    */
+    bool engine_sensor = (value[0] > 0.0) && (value[0] < 100.0);
+    bool battery_sensor = (value[1] > 0.0) && (value[1] < 100.0);
+    float chip_temperature = temp_sensor.getChipTemperature(); 
+    bool chip_sensor = (chip_temperature > 0.0) && (chip_temperature < 100.0);
+
+    sendDiagnosticsMessage(engine_sensor, "Received valid values from engine sensor!", "Received invalid values from engine sensor!");
+    Serial.print("Current Engine Temperature: ");
+    Serial.print(value[0]);
+    Serial.println("°C"); 
+    sendDiagnosticsMessage(battery_sensor, "Received valid values from battery sensor!", "Received invalid values from battery sensor!");
+    Serial.print("Current Battery Temperature: ");
+    Serial.print(value[1]);
+    Serial.println("°C"); 
+    sendDiagnosticsMessage(chip_sensor, "Received valid values from chip sensor!", "Received invalid values from chip sensor!");
+    Serial.print("Current Chip Temperature: ");
+    Serial.print(chip_temperature);
+    Serial.println("°C"); 
+
+
     // -------------------- ELECTRICAL --------------------
     Serial.println(">>>Checking Electrical Measurements<<<");
 
@@ -87,6 +106,30 @@ void Diagnostics::startDiagnostics() {
         "INA219 successfully initialized!",
         "INA219 could not be initialized!"
     );
+    if (ina_ok) {
+        auto current = electrical_measurement.getCurrent(); 
+        bool current_validated = (current >= 0) && (current < 100); 
+        sendDiagnosticsMessage(
+            current_validated,
+            "Received valid values for Current!",
+            "Received invalid values for Current!"
+        );
+        Serial.print("Current Value for external Battery: ");
+        Serial.print(current);
+        Serial.println("A");
+
+        auto voltage = electrical_measurement.getVoltage(); 
+        bool voltage_validated = (voltage >= 0) && (current < 100);
+
+        sendDiagnosticsMessage(
+            current_validated,
+            "Received valid values for Voltage!",
+            "Received invalid values for Voltage!"
+        );
+        Serial.print("Battery Voltage Value for external Battery: ");
+        Serial.print(voltage);
+        Serial.println("V");
+    }
 
 
     sendDiagnosticsMessage(
@@ -95,41 +138,33 @@ void Diagnostics::startDiagnostics() {
         "MAX17048 could not be initialized!"
     );
 
-    if (ina_ok) {
 
-        sendDiagnosticsMessage(
-            !isnan(electrical_measurement.getCurrent()),
-            "Received valid values for Current!",
-            "Received invalid values for Current!"
-        );
-        //Serial.println(electrical_measurement.getCurrent());
-
-        sendDiagnosticsMessage(
-            !isnan(electrical_measurement.getVoltage()),
-            "Received valid values for Voltage!",
-            "Received invalid values for Voltage!"
-        );
-        //Serial.println(electrical_measurement.getVoltage());
-    }
 
     if (max_ok) {
 
         float batt_v = electrical_measurement.getBatteryVoltage();
         float batt_p = electrical_measurement.getBatteryPercentage();
 
+        bool battery_v_validated = (batt_v >= 0.0) && (batt_v < 100.0);
+        bool battery_p_validated = (batt_p >= 0.0) && (batt_p < 100.0); 
+
         sendDiagnosticsMessage(
-            !isnan(batt_v),
+            battery_v_validated,
             "Received valid battery voltage!",
             "Received invalid battery voltage!"
         );
-        //Serial.println(batt_v);
+        Serial.print("Battery Voltage Value for internal Battery: ");
+        Serial.print(batt_v);
+        Serial.println("V");
 
         sendDiagnosticsMessage(
-            !isnan(batt_p) && batt_p >= 0.0f && batt_p <= 100.0f,
+            battery_p_validated,
             "Received valid battery percentage!",
             "Received invalid battery percentage!"
         );
-        //Serial.println(batt_p);
+        Serial.print("Battery Percentage for internal Battery: ");
+        Serial.print(batt_v);
+        Serial.println("%");
     }
 
     // -------------------- BNO085 --------------------
@@ -156,9 +191,13 @@ void Diagnostics::startDiagnostics() {
             "Gyroscope values valid!",
             "Gyroscope values invalid!"
         );
-        //Serial.println(gyro.x);
-        //Serial.println(gyro.y);
-        //Serial.println(gyro.z);
+        Serial.print("Gyro Values for x y z: ");
+        Serial.print(gyro.x);
+        Serial.print(" ");
+        Serial.print(gyro.y);
+        Serial.print(" ");
+        Serial.println(gyro.z);
+  
 
         AxisValues mag = gyro_manager.getMag();
         sendDiagnosticsMessage(
@@ -166,9 +205,12 @@ void Diagnostics::startDiagnostics() {
             "Magnetometer values valid!",
             "Magnetometer values invalid!"
         );
-        //Serial.println(mag.x);
-        //Serial.println(mag.y);
-        //Serial.println(mag.z);
+        Serial.print("Magnetometer Values for x y z: ");
+        Serial.print(mag.x);
+        Serial.print(" ");
+        Serial.print(mag.y);
+        Serial.print(" ");
+        Serial.println(mag.z);
 
         AxisValues linAcc = gyro_manager.getLinearAcceleration();
         sendDiagnosticsMessage(
@@ -176,9 +218,12 @@ void Diagnostics::startDiagnostics() {
             "Linear acceleration values valid!",
             "Linear acceleration values invalid!"
         );
-        //Serial.println(linAcc.x);
-        //Serial.println(linAcc.y);
-        //Serial.println(linAcc.z);
+        Serial.print("Linear Acceleration Values for x y z: ");
+        Serial.print(linAcc.x);
+        Serial.print(" ");
+        Serial.print(linAcc.y);
+        Serial.print(" ");
+        Serial.println(linAcc.z);
 
         Quaternion quat = gyro_manager.getQuat();
         sendDiagnosticsMessage(
@@ -186,24 +231,33 @@ void Diagnostics::startDiagnostics() {
             "Rotation vector (quaternion) values valid!",
             "Rotation vector (quaternion) values invalid!"
         );
-        //Serial.println(quat.r);
-        //Serial.println(quat.i);
-        //Serial.println(quat.j);
-        //Serial.println(quat.k);
+        Serial.print("Quaternion Values for r i j k: ");
+        Serial.print(quat.r);
+        Serial.print(" ");
+        Serial.print(quat.i);
+        Serial.print(" ");
+        Serial.print(quat.j);
+        Serial.print(" ");
+        Serial.println(quat.k);
     }
     // -------------------- HALL SENSOR --------------------
     Serial.println(">>> Checking Hall / Speed Sensor <<<");
 
-    /*
-    speed_sensor.init(serial, HALL_SENSOR_PIN, this);
+    
+    speed_sensor.init(&Serial, HALL_SENSOR_PIN, this);
     sendDiagnosticsMessage(true,
         "Hall sensor initialized!",
         "Hall sensor could not be initialized!"
     );
-    */
+
+    
 
     Wire.end(); 
-    Serial.println("Self-Checkup has terminated! Proceeding to start in Operating-Mode!");
+    Serial.println("-----------[Tests completed]-----------");
+    Serial.print("Errors: ");
+    Serial.println(error_count);
+    error_count = 0; 
+    Serial.println("Self-Checkup has terminated! Press r to restart!");
 }  
 
 void Diagnostics::sendDiagnosticsMessage(bool status, String pos_msg, String neg_msg){
@@ -213,6 +267,7 @@ void Diagnostics::sendDiagnosticsMessage(bool status, String pos_msg, String neg
   } else {
     Serial.print("\033[31m[FAIL]\033[0m ");
     Serial.println(neg_msg);
+    error_count++; 
   }
 };
 

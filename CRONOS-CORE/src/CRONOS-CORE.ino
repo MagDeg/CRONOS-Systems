@@ -12,8 +12,8 @@
 #define SD_FILE_NAME "/SensorData"
 
 
-DeviceAddress engine_temperature_sensor = {0x28, 0x55, 0x9A, 0x5B, 0x41, 0x24, 0x0B, 0xDD};
-DeviceAddress battery_temperature_sensor = {0x28, 0x61, 0x64, 0x35, 0xF9, 0x7F, 0x26, 0x7E};
+DeviceAddress engine_temperature_sensor = {0x28, 0xD0, 0xA0, 0x5E, 0x41, 0x24, 0x0B, 0x64};
+DeviceAddress battery_temperature_sensor = {0x28, 0x61, 0x64, 0x35, 0xF9, 0x6E, 0x2C, 0x28};
 
 QueueHandle_t sensorQueue;
 TemperatureSensorControl temperatureController(engine_temperature_sensor, battery_temperature_sensor); 
@@ -85,8 +85,9 @@ void setup() {
   Serial.println("Do you want to start the Self-Checkup-Mode? Y/N");
   
   unsigned long startTime = millis();
+  bool checkup_finished = false;
 
-  while (millis() - startTime < 10000) {
+  while (millis() - startTime < 10000 || checkup_finished == true) {
     if (Serial.available()) {
       String input = Serial.readStringUntil('\n');
       input.trim();
@@ -95,12 +96,11 @@ void setup() {
       if (input.equalsIgnoreCase("Y")) {
         Serial.println("Starting Self-Checkup-Mode...");
         diagnostics.startDiagnostics();
-        delay(5000);
-        ESP.restart();
+        continue;
+  
         
       }
-
-      break; // Abbruch, Eingabe erhalten
+      if(input.equalsIgnoreCase("q")) ESP.restart(); // Abbruch, Eingabe erhalten
     }
   }
   
