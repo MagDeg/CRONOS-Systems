@@ -17,6 +17,8 @@ thread and read from the background thread.
 import threading
 # time.sleep for read-loop backpressure and time.time for last_data_time watchdog timestamps
 import time
+# queue.Queue for thread-safe raw data transfer from the serial thread to the GUI thread
+import queue
 # pyserial library for cross-platform serial-port communication
 import serial
 # Structured logging so serial errors go to the app's log system instead of stdout
@@ -74,6 +76,8 @@ class SerialReader:
         self.running = False
         # Wall-clock timestamp of the most recent successful parse — used for watchdog
         self.last_data_time = 0.0
+        # Thread-safe queue holding raw serial lines for the GUI to drain each tick
+        self.raw_queue: queue.Queue[str] = queue.Queue()
 
     # Open the serial port and launch the background daemon thread
     def start(self):
@@ -139,63 +143,53 @@ class SerialReader:
             # 10ms sleep yields CPU between polling cycles (~100 checks/second)
             time.sleep(0.01)
 
-    # Parse a raw semicolon-delimited line and write all 15 fields into TransmittedData
+    # Parse a raw semicolon-delimited line and write all fields into TransmittedData
     def on_data(self, data: str):
+        # Push raw line into the thread-safe queue so the GUI can display it like a terminal
+        self.raw_queue.put(data)
         # Split on ';' — the rocket firmware uses semicolons as field delimiters
         split_data = data.split(';')
-        # Protocol guarantees exactly 15 fields per complete packet
-        if len(split_data) != 15:
-            # Debug-level because partial lines near startup are expected, not errors
-            logger.debug("Unexpected packet length: %d", len(split_data))
-            # Discard malformed packets without touching the shared data
+        # Accept 14 fields (seq;status;drive;temps;ax;ay;yaw;gyro;voltage;current;battery) or
+        # 15 fields (seq;timestamp;status;drive;temps;ax;ay;yaw;gyro;voltage;current;battery)
+        n = len(split_data)
+        if n == 14:
+            # 14-field format: no timestamp — use wall clock as synthetic timestamp
+            sidx = 0   # telemetry data starts at index 0
+            timestamp = int(time.time() * 1000)
+        elif n == 15:
+            # 15-field format: includes timestamp at index 1
+            sidx = 1
+            timestamp = int(split_data[1])
+        else:
+            logger.debug("Unexpected packet length: %d", n)
             return
 
         try:
-            # Local alias for the shared struct — reduces line noise in field assignments
             td = self.transmitted_data
-            # Acquire the lock so the GUI tick (reading DisplayData) doesn't see a half-written state
             with td.lock:
-                # Save the previous sequence number for packet-loss delta calculation
                 td.previous_packet_number = td.packet_number
-                # Field 0: monotonically incrementing packet sequence number
                 td.packet_number = int(split_data[0])
-                # Save the previous timestamp for inter-packet delay calculation
+
                 td.previous_packet_timestamp = td.timestamp
-                # Field 1: millisecond timestamp from the rocket's onboard clock
-                td.timestamp = int(split_data[1])
-                # Field 2: system status / error code (0 = nominal)
-                td.status = int(split_data[2])
-                # Field 3: drive value (RPM / throttle position)
-                td.drive = float(split_data[3])
-                # Field 4: engine/motor temperature in °C
-                td.temperature_engine = int(split_data[4])
-                # Field 5: battery pack temperature in °C
-                td.temperature_battery = int(split_data[5])
-                # Field 6: onboard microcontroller/IMU chip temperature in °C
-                td.temperature_chip = int(split_data[6])
-                # Field 7: linear acceleration X-axis in m/s²
-                td.lin_accel_x = float(split_data[7])
-                # Field 8: linear acceleration Y-axis in m/s²
-                td.lin_accel_y = float(split_data[8])
-                # Field 9: euler angle / compass heading in degrees
-                td.euler = float(split_data[9])
-                # Field 10: gyroscope Z-axis (yaw rate) in °/s
-                td.gyro_z = float(split_data[10])
-                # Field 11: system voltage in volts
-                td.voltage = float(split_data[11])
-                # Field 12: system current draw in amperes
-                td.current = float(split_data[12])
-                # Field 13: battery-specific voltage (may differ from system voltage)
-                td.battery_voltage = float(split_data[13])
-                # Field 14: battery state of charge as a percentage 0–100
-                td.battery_percentage = float(split_data[14])
-            # Record wall-clock time of this parse for the data-stale watchdog
+                td.timestamp = timestamp
+
+                # sidx=0 for 14-field, sidx=1 for 15-field
+                td.status = int(split_data[sidx + 1])
+                td.drive = float(split_data[sidx + 2])
+                td.temperature_engine = int(float(split_data[sidx + 3]))
+                td.temperature_battery = int(float(split_data[sidx + 4]))
+                td.temperature_chip = int(float(split_data[sidx + 5]))
+                td.lin_accel_x = float(split_data[sidx + 6])
+                td.lin_accel_y = float(split_data[sidx + 7])
+                td.euler = float(split_data[sidx + 8])
+                td.gyro_z = float(split_data[sidx + 9])
+                td.voltage = float(split_data[sidx + 10])
+                td.current = float(split_data[sidx + 11])
+                td.battery_voltage = float(split_data[sidx + 12])
+                td.battery_percentage = float(split_data[sidx + 13])
             self.last_data_time = time.time()
-            # Persist the raw line to the rolling CSV log file
             csv_logger.write(data)
         except (ValueError, IndexError) as e:
-            # ValueError from int/float on non-numeric data; IndexError from truncated packets
-            logger.debug("Failed to parse packet: %s; data=%r", e, data)
+            logger.warning("Failed to parse (n=%d, split=%r): %s", n, split_data, e)
         except Exception:
-            # Catch-all for unexpected bugs — keep the thread alive rather than crashing
             logger.exception("Unexpected error parsing data: %r", data)

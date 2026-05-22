@@ -6,7 +6,7 @@ Widgets:
 """
 
 # Import all Qt widgets needed for the settings form layout
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QCheckBox, QTimeEdit
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QCheckBox, QTimeEdit, QComboBox
 # Import Qt enums and QTime for time-picker configuration
 from PySide6.QtCore import Qt, QTime
 # Import the custom toggle switch used for boolean feature toggles
@@ -265,6 +265,26 @@ class SettingsPanel(QWidget):
         self._port_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._port_label)
 
+        # Port selection row: refresh button + port combo + connect button
+        port_row = QHBoxLayout()
+        port_row.setContentsMargins(4, 2, 4, 2)
+        self._port_refresh = QPushButton("Scan")
+        self._port_refresh.setObjectName("SettingsButton")
+        self._port_refresh.setFixedWidth(50)
+        self._port_refresh.clicked.connect(self._refresh_ports)
+        port_row.addWidget(self._port_refresh)
+        self._port_combo = QComboBox()
+        self._port_combo.setObjectName("SettingsInput")
+        self._port_combo.setMinimumWidth(120)
+        self._port_combo.addItem("(scan first)")
+        port_row.addWidget(self._port_combo)
+        self._port_connect = QPushButton("Connect")
+        self._port_connect.setObjectName("SettingsButton")
+        self._port_connect.setFixedWidth(70)
+        self._port_connect.clicked.connect(self._on_connect_clicked)
+        port_row.addWidget(self._port_connect)
+        layout.addLayout(port_row)
+
         # Separator between serial port info and CSV logging info
         sep6 = QWidget()
         sep6.setFixedHeight(1)
@@ -368,3 +388,26 @@ class SettingsPanel(QWidget):
     # Update the CSV filename label text
     def set_csv_label(self, name: str):
         self._csv_label.setText(name)
+
+    # Callback invoked when the user clicks Connect/Disconnect — set externally by sidebar
+    _on_connect = None
+
+    # Scan for available serial ports and populate the combo box
+    def _refresh_ports(self):
+        self._port_combo.clear()
+        try:
+            import serial.tools.list_ports
+            ports = serial.tools.list_ports.comports()
+            if not ports:
+                self._port_combo.addItem("(no ports found)")
+            else:
+                for p in ports:
+                    self._port_combo.addItem(p.device, p.device)
+        except ImportError:
+            self._port_combo.addItem("(pyserial not available)")
+
+    # Handle Connect/Disconnect button click
+    def _on_connect_clicked(self):
+        port = self._port_combo.currentData()
+        if port and self._on_connect:
+            self._on_connect(port)

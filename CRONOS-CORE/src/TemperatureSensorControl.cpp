@@ -52,8 +52,7 @@ float* TemperatureSensorControl::getTemperatureOfSensors() {
 }
 
 float TemperatureSensorControl::getChipTemperature() {
-  return 0.0;
-  //return temperatureRead();
+  return temperatureRead();
 }
 
 SensorStatus TemperatureSensorControl::checkSensorStatus() {

@@ -13,14 +13,27 @@ import random
 # The shared telemetry struct that demo mode populates each tick
 from data.received_data import TransmittedData
 
-# Default serial device path — main.py checks this to decide real-vs-demo mode
+# Common serial port patterns tried in order when auto-discovering
+_FALLBACK_PATHS = ["/dev/ttyUSB0", "/dev/ttyACM0", "/dev/ttyS0", "/dev/ttyUSB1"]
+
+# Auto-discover the first available serial port on this system.
+# Returns the device path string, or None if no serial port is found.
+def discover_serial_port():
+    import serial.tools.list_ports
+    import os
+    common_ports = [x.device for x in serial.tools.list_ports.comports()]
+    for port in common_ports:
+        return port
+    for p in _FALLBACK_PATHS:
+        if os.path.exists(p):
+            return p
+    return None
+
+# Keep old name for backwards compatibility — delegates to discover_serial_port
 SERIAL_PORT = "/dev/ttyUSB0"
 
-# Dynamically check whether a given serial port is physically present on this system
 def port_exists(p):
-    # Lazy import: pyserial's port enumeration — avoid overhead when not needed
     import serial.tools.list_ports
-    # Compare the requested path against all detected comports' device names
     return p in [x.device for x in serial.tools.list_ports.comports()]
 
 # Synthetic telemetry generator used when no serial hardware is connected

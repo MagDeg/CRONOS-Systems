@@ -46,10 +46,11 @@ _COMMANDS = {
     "csv lines": "Show number of lines logged in CSV",
     "csv new <name>": "Create a new CSV log file",
     "status": "Show current system status",
+    "diag": "Dump current transmitted data values",
 }
 
 # Sorted list of command prefixes used for Tab-completion in the command-line widget
-_TAB_COMMANDS = sorted(["help", "clear", "reset", "time", "alarm", "alarms", "sound", "alerts", "warnings", "debug", "round", "wheel", "timeout", "list", "connect", "csv", "status"])
+_TAB_COMMANDS = sorted(["help", "clear", "reset", "time", "alarm", "alarms", "sound", "alerts", "warnings", "debug", "round", "wheel", "timeout", "list", "connect", "csv", "status", "diag"])
 
 
 class CommandLineEdit(QLineEdit):
@@ -203,6 +204,8 @@ class RightSidebar(QWidget):
         self._settings = SettingsPanel(index=0)
         # Clear the panel's own stylesheet so it inherits the SidebarCard styling instead
         self._settings.setStyleSheet("")
+        # Wire the settings panel's connect button to our port connection handler
+        self._settings._on_connect = self.connect_to_port
         cl.addWidget(self._settings)
         # Install the card as the scroll area's widget
         scroll_settings.setWidget(card)
@@ -240,14 +243,13 @@ class RightSidebar(QWidget):
         self._log.setMinimumHeight(100)
         self._tabs.addTab(self._log, "Log")
 
-        # Serial tab: raw serial data output, useful for debugging the serial protocol
+        # Serial tab: raw serial data output, always visible like a serial terminal monitor
         self._serial_log = QTextEdit()
         self._serial_log.setObjectName("LogOutput")
         self._serial_log.setReadOnly(True)
         self._serial_log.setMinimumHeight(100)
         self._tabs.addTab(self._serial_log, "Serial")
-        # Hide the Serial tab by default; made visible when debug mode is toggled on
-        self._tabs.setTabVisible(1, False)
+        # Serial tab is always visible — shows raw incoming data in terminal style
 
         # Errors tab: error queue output showing timestamp, error code, and description
         self._error_log = QTextEdit()
@@ -320,9 +322,36 @@ class RightSidebar(QWidget):
         sb.setValue(sb.maximum())
 
     def set_serial_tab_visible(self, visible: bool):
-        """Show or hide the Serial tab (toggled by debug mode)."""
-        # Tab index 1 is the Serial tab; visibility is toggled by the debug command
-        self._tabs.setTabVisible(1, visible)
+        """No-op — Serial tab is always visible now (shows raw data like a terminal)."""
+
+    @property
+    def raw_queue(self):
+        """Return the active reader's raw data queue, or None."""
+        return self._reader.raw_queue if self._reader else None
+
+    def connect_to_port(self, port: str):
+        """Connect to *port*, stop any existing reader, and start a new SerialReader."""
+        from core.serial_background_reading import SerialReader
+        from core.csv_logger import csv_logger
+        if self._reader:
+            try:
+                self._reader.stop()
+            except Exception:
+                pass
+        csv_logger.close()
+        td = self._td
+        try:
+            self._reader = SerialReader(port, td, 115200)
+            self._reader.start()
+            csv_logger.open()
+            self._settings.set_csv_label(csv_logger.basename)
+            self._settings.set_port_label(port)
+            self._log.append(f"[OK] Connected to {port}")
+            self._log.append(f"[OK] Logging to {csv_logger.path}")
+            self._serial_log.append(f"--- Connected to {port} ---")
+        except Exception as e:
+            self._reader = None
+            self._log.append(f"[!] Failed to connect: {e}")
 
     def _execute(self):
         """Parse the current command text and dispatch to the matching handler.
@@ -364,6 +393,7 @@ class RightSidebar(QWidget):
             "connect": self._cmd_connect,
             "csv": self._cmd_csv,
             "status": self._cmd_status,
+            "diag": self._cmd_diag,
         }.get(cmd)
 
         if handler:
@@ -542,43 +572,14 @@ class RightSidebar(QWidget):
             self._log.append("[!] pyserial not installed")
 
     def _cmd_connect(self, args):
-        """Connect to a serial port via ``connect <port>`` (e.g. ``connect /dev/ttyUSB0``).
-
-        Stops any existing reader, closes the CSV logger, then starts a new
-        ``SerialReader`` thread and re-opens the CSV logger.
-        """
+        """Connect to a serial port via ``connect <port>`` (e.g. ``connect /dev/ttyUSB0``)."""
         if not args:
             self._log.append("[!] Usage: connect <port>  (e.g. connect /dev/ttyUSB0)")
             return
-        port = args[0]
-        from core.serial_background_reading import SerialReader
-        from core.csv_logger import csv_logger
-        from data.received_data import TransmittedData
-        # Stop any existing reader cleanly before starting a new connection
-        if self._reader:
-            try:
-                self._reader.stop()
-            except Exception:
-                pass
-        # Close the CSV logger so it flushes pending data before switching ports
-        csv_logger.close()
-        td = self._td
-        try:
-            # Start a new SerialReader on the requested port at 115200 baud
-            self._reader = SerialReader(port, td, 115200)
-            self._reader.start()
-            csv_logger.open()
-            # Update the settings panel labels to reflect the new connection
-            self._settings.set_csv_label(csv_logger.basename)
-            self._settings.set_port_label(port)
-            self._log.append(f"[OK] Connected to {port}")
-            self._log.append(f"[OK] Logging to {csv_logger.path}")
-        except Exception as e:
-            self._reader = None
-            self._log.append(f"[!] Failed to connect: {e}")
+        self.connect_to_port(args[0])
 
     def _cmd_debug(self, args):
-        """Toggle demo debug values via ``debug on|off``; also shows/hides the Serial tab."""
+        """Toggle demo debug values via ``debug on|off``."""
         t = self._settings._debug_toggle
         state = args[0] if args else ""
         if state == "on":
@@ -590,8 +591,6 @@ class RightSidebar(QWidget):
         else:
             t.set_checked(not t.is_checked())
             self._log.append(f"[OK] Debug values toggled {'ON' if t.is_checked() else 'OFF'}")
-        # Show the Serial tab when debug mode is on so raw serial data is visible
-        self._tabs.setTabVisible(1, t.is_checked())
 
     def _cmd_warnings(self, args):
         """Toggle log warnings via ``warnings on|off``."""
@@ -646,6 +645,25 @@ class RightSidebar(QWidget):
         self._log.append(f"Wheel: {self._settings.get_wheel_circumference()} m")
         self._log.append(f"Timeout: {self._settings.get_connection_timeout()} ms")
         self._log.append(f"Serial: {'Connected to ' + self._reader.port if self._reader else 'Disconnected'}")
+
+    def _cmd_diag(self, args):
+        """Dump current transmitted data values."""
+        td = self._td
+        if td is None:
+            self._log.append("[!] No transmitted data reference")
+            return
+        with td.lock:
+            self._log.append("── TransmittedData ──")
+            self._log.append(f"  PKT#={td.packet_number}  prev={td.previous_packet_number}")
+            self._log.append(f"  TS={td.timestamp}ms  prev={td.previous_packet_timestamp}ms")
+            self._log.append(f"  status={td.status}  drive={td.drive}")
+            self._log.append(f"  TE={td.temperature_engine}°C  TB={td.temperature_battery}°C  TC={td.temperature_chip}°C")
+            self._log.append(f"  AX={td.lin_accel_x}  AY={td.lin_accel_y}")
+            self._log.append(f"  euler={td.euler}  gyro_z={td.gyro_z}")
+            self._log.append(f"  V={td.voltage}  I={td.current}  BV={td.battery_voltage}  BP={td.battery_percentage}%")
+        if self._reader:
+            self._log.append(f"  last_data_time: {self._reader.last_data_time}")
+            self._log.append(f"  queue size: {self._reader.raw_queue.qsize()}")
 
 
 def get_right_sidebar_layout():

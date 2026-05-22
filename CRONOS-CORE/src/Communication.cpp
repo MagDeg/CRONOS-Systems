@@ -1,6 +1,6 @@
 #include "Communication.h"
 
-bool Communication::initRadio(int _ce_pin, int _csn_pin, int module, Diagnostics* _diagnostics, bool auto_ack) {
+/*bool Communication::initRadio(int _ce_pin, int _csn_pin, int module, Diagnostics* _diagnostics, bool auto_ack) {
   diagnostics = _diagnostics;
 
   ce_pin = _ce_pin;
@@ -24,8 +24,8 @@ bool Communication::initRadio(int _ce_pin, int _csn_pin, int module, Diagnostics
 
   if (module == 1) {
     radio->openWritingPipe(link_address);
-    radio->openReadingPipe(1, unit_address);
-    radio->startListening();
+    //radio->openReadingPipe(1, unit_address);
+    //radio->startListening();
   } else {
     radio->openWritingPipe(unit_address);
     radio->openReadingPipe(1, link_address);
@@ -33,7 +33,7 @@ bool Communication::initRadio(int _ce_pin, int _csn_pin, int module, Diagnostics
   }
 
   return true;
-}
+}*/
 
 
 bool Communication::initSD(int sd_pin) {
@@ -75,7 +75,7 @@ bool Communication::openSDFile(String file_name) {
   return file;
 }
 
-void Communication::saveDataForSDBuffered(DataToMaster data) {
+void Communication::saveDataForSDBuffered(DataToMaster_complete data) {
   char buffer[256];
   char buf_drive[10], buf_acc_x[10], buf_acc_y[10], buf_euler[10], buf_gyro_z[10], buf_volt[10], buf_curr[10];
 
@@ -107,8 +107,8 @@ void Communication::saveDataForSDBuffered(DataToMaster data) {
              buf_gyro_z,
              buf_volt,
              buf_curr,
-             data.temperature_4,
-             data.temperature_5
+             data.battery_percentage,
+             data.battery_voltage
     );
 
   dataBuffer += String(buffer);
@@ -158,7 +158,7 @@ void Communication::closeSDFile() {
   
 }
 
-size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t* buffer, DataToMaster* data) {
+size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t* buffer, DataToMaster_complete* data) {
     int pos = 0; 
     buffer[pos++] = identifier;
     buffer[pos++] = packet_number_counter; 
@@ -174,8 +174,8 @@ size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t*
         buffer[pos++] = data->temperature_battery;
         buffer[pos++] = data->temperature_chip;
         buffer[pos++] = data->temperature_engine;
-        buffer[pos++] = data->temperature_4;
-        buffer[pos++] = data->temperature_5;
+        buffer[pos++] = data->battery_percentage;
+        buffer[pos++] = data->battery_voltage;
         memcpy(&buffer[pos], &data->current, sizeof(data->current));
         pos += sizeof(data->current);
         memcpy(&buffer[pos], &data->voltage, sizeof(data->voltage));
@@ -198,15 +198,13 @@ size_t Communication::extractDatapacketAsBytestring(uint8_t identifier, uint8_t*
 
 }; 
 
-uint16_t Communication::generateCrc16(const uint8_t *data, size_t len) {
+uint16_t Communication::crc16(const uint8_t *data, size_t len) {
   uint16_t crc = 0xFFFF;
 
   for (size_t i = 0; i < len; i++) {
-    crc ^= (uint16_t)data[i];
-
+    crc ^= data[i];
     for (uint8_t j = 0; j < 8; j++) {
-      if (crc & 1) crc = (crc >> 1) ^ 0xA001;
-      else crc >>= 1;
+      crc = (crc & 1) ? (crc >> 1) ^ 0xA001 : (crc >> 1);
     }
   }
 
@@ -244,7 +242,7 @@ void Communication::sendDataToSlave(DataFromMaster &data) {
 
 }
 
-void Communication::sendDataToMaster(DataToMaster data) {
+void Communication::sendDataToMaster(DataToMaster_complete data) {
   
   radio->stopListening();
 
@@ -310,7 +308,7 @@ bool Communication::receiveDataFromMasterDynPayload(DataFromMaster &data) {
   return true;
 }
 
-bool Communication::receiveDataFromSlaveNoDynPayload(DataToMaster &data) {
+bool Communication::receiveDataFromSlaveNoDynPayload(DataToMaster_complete &data) {
   radio->startListening();
   if(!radio->available()) {
     return false;
@@ -325,7 +323,7 @@ bool Communication::receiveDataFromSlaveNoDynPayload(DataToMaster &data) {
         expected_packet_size = 1 /*identifier*/ + 1 /*packet_number*/
                         + 2 /*timestamp*/ + 6 /*uint8_t Felder*/
                         + sizeof(float)*3 /*current, voltage, drive*/
-                        + 2 /*temperature_4 & 5*/ 
+                        + 2 /*battery_percentage & 5*/ 
                         + 2 /*crc16*/; 
         break;
     case 2:
@@ -346,7 +344,7 @@ bool Communication::receiveDataFromSlaveNoDynPayload(DataToMaster &data) {
   return true;
 }
 
-bool Communication::receiveDataFromSlaveDynPayload(DataToMaster &data) {
+bool Communication::receiveDataFromSlaveDynPayload(DataToMaster_complete &data) {
     radio->startListening();
 
     if (!radio->available()) return false;
@@ -369,7 +367,7 @@ bool Communication::receiveDataFromSlaveDynPayload(DataToMaster &data) {
             expected_size = 1 /*identifier*/ + 1 /*packet_number*/
                             + 2 /*timestamp*/ + 6 /*uint8_t Felder*/
                             + sizeof(float)*3 /*current, voltage, drive*/
-                            + 2 /*temperature_4 & 5*/ 
+                            + 2 /*battery_percentage & 5*/ 
                             + 2 /*crc16*/; 
             break;
         case 2:
@@ -400,7 +398,7 @@ bool Communication::receiveDataFromSlaveDynPayload(DataToMaster &data) {
 
 
 
-void Communication::convertBytesToStruct(DataToMaster& data, const uint8_t* buffer, size_t length) {
+void Communication::convertBytesToStruct(DataToMaster_complete& data, const uint8_t* buffer, size_t length) {
   int pos = 0;
 
   uint8_t identifier = buffer[pos++];
@@ -417,8 +415,8 @@ void Communication::convertBytesToStruct(DataToMaster& data, const uint8_t* buff
           data.temperature_battery = buffer[pos++];
           data.temperature_chip = buffer[pos++];
           data.temperature_engine = buffer[pos++];
-          data.temperature_4 = buffer[pos++];
-          data.temperature_5 = buffer[pos++];
+          data.battery_percentage = buffer[pos++];
+          data.battery_voltage = buffer[pos++];
 
           memcpy(&data.current, &buffer[pos], sizeof(data.current));
           pos += sizeof(data.current);
@@ -457,4 +455,49 @@ bool Communication::checkDataIntegrity(uint8_t* buffer, size_t length) {
 
   return received == calc;
 }
+
+bool Communication::sendSimpleData() {
+    radio->stopListening();
+    const char msg[] = "T";
+    return radio->write(msg, sizeof(msg));
+}
+
+bool Communication::receiveSimpleData(uint8_t* buffer, uint8_t& len) {
+    radio->startListening();
+    if (!radio->available()) return false;
+    len = radio->getDynamicPayloadSize();
+    radio->read(buffer, len);
+    return true;
+}
+
+
+
+//REMODLED: 
+bool Communication::initRadio(int _ce_pin, int _csn_pin, int channel, bool autoack, Diagnostics* _diagnostics) {
+  diagnostics = _diagnostics;
+
+  ce_pin = _ce_pin;
+  csn_pin = _csn_pin;
+
+  radio = new RF24(ce_pin, csn_pin);
+
+  if (!radio->begin()) {
+  m_serial.println(F("[ERROR] Could not initialize Radiotransmitter!"));
+  diagnostics->addSystemStateToQueue(RADIO_INIT_FAILED);
+  return false;
+  }
+
+  radio->setChannel(channel);
+  radio->setPALevel(RF24_PA_LOW);
+  radio->setDataRate(RF24_250KBPS);
+  radio->setRetries(0, 0);
+  radio->setAutoAck(autoack);
+
+  radio->openWritingPipe(link_address);
+  radio->stopListening();
+
+  return true; 
+
+}
+
 

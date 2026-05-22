@@ -11,7 +11,7 @@ void Diagnostics::startDiagnostics() {
     // -------------------- RADIO --------------------
     Serial.println(">>>Checking Communication - Radio<<<");
     sendDiagnosticsMessage(
-        com.initRadio(CE_PIN, CSN_PIN, MODE, this, true),
+        com.initRadio(CE_PIN, CSN_PIN, 76,  true, this),
         "Radio is successfully initialized!",
         "Radio could not be initialized!"
     );
@@ -170,7 +170,7 @@ void Diagnostics::startDiagnostics() {
     // -------------------- BNO085 --------------------
     Serial.println(">>>Checking BNO085<<<");
 
-    bool bnoInitialized = gyro_manager.init(this, &Wire);
+    bool bnoInitialized = gyro_manager.begin(&Wire, this);
 
     sendDiagnosticsMessage(
         bnoInitialized,
@@ -185,60 +185,30 @@ void Diagnostics::startDiagnostics() {
             delay(5);
         }
 
-        AxisValues gyro = gyro_manager.getGyro();
+        float mag = gyro_manager.getData().mag_z;
         sendDiagnosticsMessage(
-            !isnan(gyro.x) && !isnan(gyro.y) && !isnan(gyro.z),
-            "Gyroscope values valid!",
-            "Gyroscope values invalid!"
-        );
-        Serial.print("Gyro Values for x y z: ");
-        Serial.print(gyro.x);
-        Serial.print(" ");
-        Serial.print(gyro.y);
-        Serial.print(" ");
-        Serial.println(gyro.z);
-  
-
-        AxisValues mag = gyro_manager.getMag();
-        sendDiagnosticsMessage(
-            !isnan(mag.x) && !isnan(mag.y) && !isnan(mag.z),
+            !isnan(mag),
             "Magnetometer values valid!",
             "Magnetometer values invalid!"
         );
         Serial.print("Magnetometer Values for x y z: ");
-        Serial.print(mag.x);
-        Serial.print(" ");
-        Serial.print(mag.y);
-        Serial.print(" ");
-        Serial.println(mag.z);
 
-        AxisValues linAcc = gyro_manager.getLinearAcceleration();
+
+        BNOData linAcc = gyro_manager.getData();
         sendDiagnosticsMessage(
-            !isnan(linAcc.x) && !isnan(linAcc.y) && !isnan(linAcc.z),
+            !isnan(linAcc.lin_x) && !isnan(linAcc.lin_y),
             "Linear acceleration values valid!",
             "Linear acceleration values invalid!"
         );
-        Serial.print("Linear Acceleration Values for x y z: ");
-        Serial.print(linAcc.x);
-        Serial.print(" ");
-        Serial.print(linAcc.y);
-        Serial.print(" ");
-        Serial.println(linAcc.z);
 
-        Quaternion quat = gyro_manager.getQuat();
+
+        float quat = gyro_manager.getData().yaw;
         sendDiagnosticsMessage(
-            !isnan(quat.r) && !isnan(quat.i) && !isnan(quat.j) && !isnan(quat.k),
+            !isnan(quat),
             "Rotation vector (quaternion) values valid!",
             "Rotation vector (quaternion) values invalid!"
         );
-        Serial.print("Quaternion Values for r i j k: ");
-        Serial.print(quat.r);
-        Serial.print(" ");
-        Serial.print(quat.i);
-        Serial.print(" ");
-        Serial.print(quat.j);
-        Serial.print(" ");
-        Serial.println(quat.k);
+
     }
     // -------------------- HALL SENSOR --------------------
     Serial.println(">>> Checking Hall / Speed Sensor <<<");

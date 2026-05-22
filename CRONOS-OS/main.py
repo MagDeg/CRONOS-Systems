@@ -3,9 +3,9 @@
 Builds a PySide6 ``QApplication``, loads the Qt stylesheet, creates the
 data pipeline (``TransmittedData`` → ``DisplayDataCalculator`` →
 ``DisplayData``), and starts a 500 ms ``QTimer`` that drives the update
-loop.  If ``/dev/ttyUSB0`` is present a background ``SerialReader``
-thread is started; otherwise ``DemoDataGenerator`` supplies synthetic
-data.
+loop.  ``discover_serial_port()`` auto-detects the first available serial
+port; if found a background ``SerialReader`` thread is started, otherwise
+``DemoDataGenerator`` supplies synthetic data.
 """
 
 # Import sys for access to command-line arguments and the exit() function
@@ -24,8 +24,8 @@ from data.received_data import TransmittedData
 from data.displayed_data import DisplayData
 # Import the transformer that converts raw TransmittedData into DisplayData
 from core.display_data_calculator import DisplayDataCalculator
-# Import demo data generation utilities and the serial-port existence helper
-from core.demo_generator import DemoDataGenerator, port_exists, SERIAL_PORT
+# Import demo data generation utilities and the serial-port discovery helper
+from core.demo_generator import DemoDataGenerator, discover_serial_port
 # Import the background thread that reads telemetry from the serial port
 from core.serial_background_reading import SerialReader
 # Import the singleton CSV logger for recording telemetry data to disk
@@ -83,12 +83,14 @@ def main():
     sidebar._reader = None
     # Give the sidebar access to the raw TransmittedData for the debug display panel
     sidebar._td = transmitted
-    # Check whether the serial device file exists on the filesystem
-    if port_exists(SERIAL_PORT):
+    # Auto-discover the first available serial port on this system
+    serial_port = discover_serial_port()
+    # Check whether a serial device was found
+    if serial_port is not None:
         # Wrap serial setup in try/except in case the device exists but fails to open
         try:
             # Create the serial reader thread configured for 115200 baud
-            reader = SerialReader(SERIAL_PORT, transmitted, 115200)
+            reader = SerialReader(serial_port, transmitted, 115200)
             # Start the background thread that continuously reads telemetry packets
             reader.start()
             # Store the reader reference on the sidebar so tick logic can check connection state
@@ -98,7 +100,7 @@ def main():
             # Show the CSV log filename in the settings panel so the operator knows data is being saved
             sidebar._settings.set_csv_label(csv_logger.basename)
             # Display the serial port path in the settings panel for operator awareness
-            sidebar._settings.set_port_label(SERIAL_PORT)
+            sidebar._settings.set_port_label(serial_port)
         # Catch any serial-setup failure (permissions, wrong device, etc.) without crashing the app
         except Exception:
             # Silently fall back to demo mode — the reader stays None and the app runs on synthetic data

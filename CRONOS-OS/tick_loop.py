@@ -210,14 +210,24 @@ class TickLoop:
         # Lock transmitted data, run the calculator, and push the resulting DisplayData to every widget
         self._update()
 
-        # ── 4. Serial debug output ───────────────────────────────────
-        # Show or hide the serial debug tab in the sidebar depending on the operator's debug toggle
-        sidebar.set_serial_tab_visible(debug)
+        # ── 4. Raw serial monitor ────────────────────────────────────
+        # Drain raw serial lines from the reader's thread-safe queue into the Serial tab
+        import queue as _queue
+        raw_queue = sidebar.raw_queue
+        if raw_queue is not None:
+            while True:
+                try:
+                    raw_line = raw_queue.get_nowait()
+                    sidebar.append_serial(raw_line)
+                except _queue.Empty:
+                    break
+
+        # ── 5. Formatted debug output ─────────────────────────────────
         if debug:
             # Lock the raw data to safely format a debug line from all current field values
             with self.transmitted.lock:
                 t = self.transmitted
-                # Build a single-line dump of every raw telemetry field for the serial console tab
+                # Build a single-line dump of every raw telemetry field
                 line = (
                     f"PKT#{t.packet_number} T{t.timestamp}ms "
                     f"DRV={t.drive:.0f} "
@@ -226,11 +236,12 @@ class TickLoop:
                     f"AX={t.lin_accel_x:.1f} AY={t.lin_accel_y:.1f} "
                     f"V={t.voltage:.2f}V I={t.current:.2f}A "
                     f"BV={t.battery_voltage:.2f}V BP={t.battery_percentage:.0f}%"
+                    f" status={t.status}"
                 )
-            # Append the formatted line to the sidebar's serial console widget
-            sidebar.append_serial(line)
+            # Append the formatted line to the Log tab with a [DBG] prefix
+            sidebar.append_log(f"[DBG] {line}")
 
-        # ── 5. Demo-off transition (clear everything) ────────────────
+        # ── 6. Demo-off transition (clear everything) ────────────────
         # Detect when the operator switches from demo mode off — purge all demo-derived data so it doesn't pollute the display
         if not debug and self._prev_debug:
             history.clear()
@@ -245,7 +256,7 @@ class TickLoop:
         # Save the current debug state so we can detect the transition on the next tick
         self._prev_debug = debug
 
-        # ── 6. Velocity & distance ───────────────────────────────────
+        # ── 7. Velocity & distance ───────────────────────────────────
         # Generate or zero RPM depending on the active data source
         if debug:
             # In demo mode, produce a random RPM to simulate a running engine
@@ -276,7 +287,7 @@ class TickLoop:
         # Estimate completed rounds; guard against division by zero if round length hasn't been configured yet
         self.display.estimated_rounds = self.display.distance / rl if rl > 0 else 0
 
-        # ── 7. Delegated sub-system updates ──────────────────────────
+        # ── 8. Delegated sub-system updates ──────────────────────────
         # Feed the energy tracker with delta-time and power so it can integrate kWh consumption
         self.energy.tick(dt, self.display.power, self.display)
         # Feed the trip computer with delta-time and velocity to update trip distance and averages
@@ -296,7 +307,7 @@ class TickLoop:
             self.display.heading,
         )
 
-        # ── 8. Countdown (elapsed／remaining time) ───────────────────
+        # ── 9. Countdown (elapsed／remaining time) ───────────────────
         # If the operator has set a target start time, compute elapsed and remaining time against the wall clock
         if settings.is_time_set():
             target = settings.get_target_time()
@@ -317,7 +328,7 @@ class TickLoop:
             self.display.elapsed_time = 0
             self.display.remaining_time = 0
 
-        # ── 9. Alarm / warning engine ────────────────────────────────
+        # ── 10. Alarm / warning engine ───────────────────────────────
         # Read the operator-configured alarm thresholds from the settings panel
         alarms = settings.get_alarm_values()
         # Only evaluate alarms when the alarm system is armed, warnings are enabled, and we have live data
@@ -363,7 +374,7 @@ class TickLoop:
                     self._warned.discard(key_a)
                     self._warned.discard(key_w)
 
-        # ── 10. Error queue ──────────────────────────────────────────
+        # ── 11. Error queue ──────────────────────────────────────────
         # Read the status field from the raw data under lock, then let the error tracker decode any error codes
         with self.transmitted.lock:
             status = self.transmitted.status
@@ -371,7 +382,7 @@ class TickLoop:
         sidebar.update_error_queue(self.errors.queue)
         self.window._topbar.update_module_status(self.errors.queue)
 
-        # ── 11. Topbar popup refreshes ───────────────────────────────
+        # ── 12. Topbar popup refreshes ───────────────────────────────
         # Refresh the gyroscope / attitude popup with the latest orientation and acceleration data
         self.window._topbar.update_gyro(self.display)
         # Refresh the trip computer popup with updated distance, speed, and trip statistics
@@ -379,7 +390,7 @@ class TickLoop:
         # Refresh the trend graph popup so it pulls in the latest data from MetricHistory
         self.window._topbar.update_trends()
 
-        # ── 12. History feed (for trend graphs) ──────────────────────
+        # ── 13. History feed (for trend graphs) ──────────────────────
         d = self.display
         # Record a timestamped snapshot of every key telemetry metric into the ring buffer for trend visualization
         history.feed(time.time(), {
@@ -396,7 +407,7 @@ class TickLoop:
             "elapsed_time": d.elapsed_time, "remaining_time": d.remaining_time,
         })
 
-        # ── 13. StatsTracker feed ────────────────────────────────────
+        # ── 14. StatsTracker feed ────────────────────────────────────
         s = self.stats
         # Feed every key telemetry value into the rolling statistics tracker to keep min/max/avg up to date
         s.feed("g_force", d.g_force)
@@ -412,7 +423,7 @@ class TickLoop:
         s.feed("temp_engine", float(d.temperature_engine))
         s.feed("acceleration", d.acceleration)
 
-        # ── 14. Publish rolling stats to DisplayData ─────────────────
+        # ── 15. Publish rolling stats to DisplayData ─────────────────
         # Copy every computed rolling statistic back into DisplayData so the widgets can render min/max/avg values
         d.acceleration_avg = s.avg("acceleration")
         d.acceleration_min = s.min("acceleration")

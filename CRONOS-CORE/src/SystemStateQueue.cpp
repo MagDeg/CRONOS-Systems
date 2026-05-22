@@ -2,7 +2,7 @@
 
 bool SystemStateQueue::checkForDuplicates(uint8_t state)  {
     for (int i = 0; i < count; i++ ) {
-        if (buffer[(head + i) % STATE_QUEUE_SIZE] = state) return true;
+        if (buffer[(head + i) % STATE_QUEUE_SIZE] == state) return true;
     }
     return false;
 }
